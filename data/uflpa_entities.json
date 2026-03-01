@@ -1,0 +1,32 @@
+[
+  {
+    "entity_name": "Xinjiang Uyghur Autonomous Region (XUAR) government entities",
+    "aliases": ["XUAR", "Xinjiang government"],
+    "country": "China"
+  },
+  {
+    "entity_name": "Xinjiang Production and Construction Corps",
+    "aliases": ["XPCC", "Bingtuan"],
+    "country": "China"
+  },
+  {
+    "entity_name": "Hoshine Silicon Industry Co. Ltd.",
+    "aliases": ["Hoshine Silicon"],
+    "country": "China"
+  },
+  {
+    "entity_name": "Xinjiang Junggar Cotton and Linen Co. Ltd.",
+    "aliases": ["Junggar Cotton and Linen"],
+    "country": "China"
+  },
+  {
+    "entity_name": "Changji Esquel Textile Co. Ltd.",
+    "aliases": ["Esquel Changji", "Changji Esquel"],
+    "country": "China"
+  },
+  {
+    "entity_name": "Nanjing Syntheall Pharmaceutical Co. Ltd.",
+    "aliases": ["Syntheall Pharmaceutical", "Nanjing Syntheall"],
+    "country": "China"
+  }
+]
