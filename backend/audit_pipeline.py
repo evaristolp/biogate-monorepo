@@ -3,6 +3,7 @@ Full audit pipeline: persist audit + vendors, run fuzzy matching, update and ret
 Uses Supabase (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) and scripts.fuzzy_match.
 """
 
+import asyncio
 import logging
 import os
 import sys
@@ -81,7 +82,7 @@ def run_audit_pipeline(
         raise RuntimeError("Failed to create audit record")
     audit_id = audit_data[0]["id"]
 
-    # 2. Insert vendors (normalized_name set from input cleanup; risk_tier, match_evidence after match)
+    # 2. Insert vendors (normalized_name from simple cleanup for now; Claude + match next)
     vendor_rows = []
     for r in rows:
         raw_input = (r.get("vendor_name") or "").strip()
@@ -98,34 +99,92 @@ def run_audit_pipeline(
     if len(vendors_data) != len(rows):
         raise RuntimeError("Failed to insert vendor records")
 
-    # 3. Fuzzy match each vendor (same params as fuzzy_match.py: threshold=50, top_n=5, token_sort_ratio)
+    # 3. Claude normalization (batch); skip if unavailable
+    raw_names = [r["raw_input_name"] for r in vendor_rows]
+    claude_results: list[dict[str, Any]] = []
+    try:
+        from .vendor_normalizer import normalize_vendors as claude_normalize_vendors
+        claude_results = asyncio.run(claude_normalize_vendors(raw_names))
+    except ImportError as e:
+        logger.warning("Claude normalizer not available (install anthropic): %s", e)
+    except Exception as e:
+        logger.warning("Claude normalization failed, using input names: %s", e)
+    # Map Claude result by raw_name for lookup
+    claude_by_raw: dict[str, dict[str, Any]] = {}
+    for item in claude_results:
+        rn = (item.get("raw_name") or "").strip()
+        if rn:
+            claude_by_raw[rn] = item
+
+    # 4. Build normalized_vendors (merge Claude + vendor row), run fuzzy match, then parent check
     risk_summary: dict[str, int] = {"red": 0, "amber": 0, "yellow": 0, "green": 0}
     for i, v in enumerate(vendors_data):
         raw_name = vendor_rows[i]["raw_input_name"]
-        matches = match_vendor(raw_name, threshold=50, top_n=5)
+        claude = claude_by_raw.get(raw_name) or {}
+        normalized_name = (claude.get("normalized_name") or "").strip() or normalize_vendor_name(raw_name)
+        parent_company_hint = (claude.get("parent_company_hint") or "").strip() or None
+        country_hint = (claude.get("country_hint") or "").strip() or None
+        equipment_type_hint = (claude.get("equipment_type_hint") or "").strip() or None
+
+        # Fuzzy match on normalized name (or raw if same)
+        match_name = normalized_name or raw_name
+        matches = match_vendor(match_name, threshold=50, top_n=5)
         logger.info(
             "match_vendor(%r) -> %s",
-            raw_name,
+            match_name,
             [(m["matched_name"], m["score"], m.get("source_list")) for m in matches] if matches else "[]",
         )
-        top_score = matches[0]["score"] if matches else 0
-        tier = _score_to_tier(top_score)
-        risk_summary[tier] += 1
-        # normalized_name already set from input cleanup; only update risk_tier and match_evidence
+        fuzzy_score = matches[0]["score"] if matches else 0
         match_evidence = [dict(m) for m in matches] if matches else None
 
+        risk_source: str | None = None
+        parent_match_evidence: dict[str, Any] | None = None
+        effective_score = int(round(fuzzy_score))
+
+        # After normalization, before risk tier: if vendor has parent_company, match parent on watchlist.
+        # If parent's score > vendor's score, use parent's score as effective_score and set risk_source to parent_company.
+        if parent_company_hint:
+            parent_matches = match_vendor(parent_company_hint, threshold=50, top_n=5)
+            if parent_matches:
+                parent_score = parent_matches[0]["score"]
+                if parent_score > fuzzy_score:
+                    effective_score = int(round(parent_score))
+                    risk_source = "parent_company"
+                    parent_match_evidence = dict(parent_matches[0])
+                    logger.info(
+                        "parent_company overrides: %r -> %s (parent score %s > vendor %s), effective_score=%s",
+                        parent_company_hint,
+                        parent_match_evidence.get("matched_name"),
+                        parent_score,
+                        fuzzy_score,
+                        effective_score,
+                    )
+
+        tier = _score_to_tier(int(effective_score))
+        # Bump to at least amber when risk came from parent match
+        if risk_source == "parent_company" and tier == "green":
+            tier = "amber"
+        risk_summary[tier] += 1
+
         supabase_client.table("vendors").update({
+            "normalized_name": normalized_name or None,
+            "country": country_hint or vendor_rows[i].get("country"),
+            "parent_company": parent_company_hint,
+            "equipment_type": equipment_type_hint,
             "risk_tier": tier,
             "match_evidence": match_evidence,
+            "risk_source": risk_source,
+            "parent_match_evidence": parent_match_evidence,
+            "effective_score": effective_score,
         }).eq("id", v["id"]).execute()
 
-    # 4. Update audit complete
+    # 5. Update audit complete
     supabase_client.table("audits").update({
         "status": "complete",
         "completed_at": now,
     }).eq("id", audit_id).execute()
 
-    # 5. Fetch updated vendors for response
+    # 6. Fetch updated vendors for response
     vendors_final_resp = supabase_client.table("vendors").select("*").eq(
         "audit_id", audit_id
     ).order("created_at").execute()
