@@ -1,5 +1,6 @@
 # Secrets and Keys
 .env
+.env.save
 *.pem
 *.key
 
