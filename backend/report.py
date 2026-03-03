@@ -11,6 +11,7 @@ from uuid import UUID
 import jsonschema
 
 from backend.config.scoring_config import get_scoring_config
+from backend.overrides import get_effective_tier as _get_effective_tier
 from backend.schemas.risk_report import (
     DEFAULT_DISCLAIMER,
     ReportMetadata,
@@ -54,6 +55,15 @@ def _get_watchlist_snapshots(supabase_client: Any) -> list[dict[str, Any]]:
     except Exception as e:
         logger.debug("Could not fetch watchlist_snapshots: %s", e)
         return []
+
+
+def get_effective_tier(supabase_client: Any, vendor_id: str, audit_id: str) -> tuple[str, str | None]:
+    """
+    Compatibility wrapper for overrides.get_effective_tier so tests and callers
+    can patch `backend.report.get_effective_tier` without knowing the internal
+    module structure.
+    """
+    return _get_effective_tier(supabase_client, vendor_id, audit_id)
 
 
 def generate_risk_report(audit_id: str, supabase_client: Any) -> dict[str, Any]:

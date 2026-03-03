@@ -132,7 +132,13 @@ def exact_match_vendor(
         return None
     for idx, choice in enumerate(_watchlist_choices):
         if _normalize_for_exact(choice) == needle:
-            entity_name, source_list, country, match_type, risk_category = _watchlist_meta[idx]
+            meta = _watchlist_meta[idx]
+            # Backwards-compatible with older 4-tuple meta (no risk_category).
+            if len(meta) == 4:
+                entity_name, source_list, country, match_type = meta
+                risk_category = None
+            else:
+                entity_name, source_list, country, match_type, risk_category = meta
             return MatchResult(
                 matched_name=entity_name,
                 score=100,
@@ -173,7 +179,13 @@ def match_vendor(
     # (choice, score, index) -> group by (entity_name, source_list), keep best score
     best_by_entity: dict[tuple[str, str], tuple[int, str | None, str, str | None]] = {}
     for _choice, score, idx in raw:
-        entity_name, source_list, country, match_type, risk_category = _watchlist_meta[idx]
+        meta = _watchlist_meta[idx]
+        # Backwards-compatible with older 4-tuple meta (no risk_category).
+        if len(meta) == 4:
+            entity_name, source_list, country, match_type = meta
+            risk_category = None
+        else:
+            entity_name, source_list, country, match_type, risk_category = meta
         key = (entity_name, source_list)
         if key not in best_by_entity or score > best_by_entity[key][0]:
             best_by_entity[key] = (score, country, match_type, risk_category)
