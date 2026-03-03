@@ -1,0 +1,12 @@
+{
+    "valid": false,
+    "row_count": 0,
+    "errors": [
+        {
+            "code": "UNKNOWN_COLUMN",
+            "message": "Unknown column(s): expected_tier, logic_test_case",
+            "row": null,
+            "column": null
+        }
+    ]
+}

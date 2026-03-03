@@ -1,0 +1,114 @@
+## BioGate – Nucleate Activator One-Pager
+
+### Overview
+
+**What BioGate is**
+
+BioGate is an AI-powered vendor risk and sanctions-screening platform for biotech and life-science supply chains. It ingests BIS, OFAC, UFLPA, and other watchlists into a structured Supabase backend, then uses fuzzy matching and Anthropic Claude–based normalization to automatically screen procurement vendor lists and assign Red/Amber/Yellow/Green risk tiers with full evidence.
+
+**Who it’s for**
+
+Biotech and life-science organizations (including Nucleate-style portfolio companies) that:
+
+- Source instruments, reagents, sequencing, and CRO services globally.
+- Are facing pressure from BIOSECURE, BIS, OFAC, UFLPA and internal governance.
+- Currently manage vendor compliance in spreadsheets and ad-hoc processes.
+
+---
+
+### Problem
+
+- Supply chains are complex and global; regulators increasingly ask:
+  - Who are your vendors?
+  - Are any under sanction or elevated national-security risk?
+- Today, compliance officers and GCs:
+  - Export vendors from ERPs into spreadsheets.
+  - Manually search multiple government sites.
+  - Struggle with name variants, aliases, parents/subsidiaries, and historical changes.
+- This is slow, expensive, and risky:
+  - Delays R&D and operations.
+  - Creates exposure to enforcement, reputational damage, and partner friction.
+
+---
+
+### Solution
+
+BioGate provides a simple CSV-first and API-first workflow:
+
+1. Upload procurement vendor CSVs to BioGate (`/audits/upload`).
+2. BioGate:
+   - Validates and parses the CSV.
+   - Normalizes vendor names and parent relationships via Anthropic Claude.
+   - Matches vendors and parents against BIS/OFAC/UFLPA watchlists using fuzzy matching.
+   - Computes risk tiers (Red/Amber/Yellow/Green) and stores match evidence.
+3. Outputs a structured audit:
+   - Per-vendor risk tier and effective score.
+   - Match evidence, including parent-company matches.
+   - Risk summary and exportable reports.
+
+This is designed to plug directly into existing Nucleate-style teams’ procurement and governance workflows.
+
+---
+
+### Current Status (Week 3)
+
+- **Backend**
+  - Supabase instance live.
+  - BIS ingestion script built; pattern for OFAC/UFLPA.
+  - `audits` & `vendors` tables with:
+    - raw_input_name, normalized_name, country, parent_company, equipment_type.
+    - risk_tier, effective_score, risk_source, match_evidence, parent_match_evidence.
+
+- **Pipeline**
+  - `/audits/upload` FastAPI endpoint:
+    - Validates CSVs.
+    - Writes `audits` and `vendors` records.
+  - Fuzzy matching:
+    - Rapidfuzz token_sort_ratio against watchlist_entities.
+  - Parent-company expansion:
+    - If parent matches a watchlist entity more strongly than the vendor, parent drives effective risk tier.
+
+- **LLM normalization (Claude)**
+  - Batch `normalize_vendors()` call:
+    - raw_name, normalized_name, country_hint, parent_company_hint, equipment_type_hint.
+  - Integrated into the pipeline as a pre-screening normalization step.
+
+- **Testing**
+  - Unit tests for CSV validation and upload endpoint.
+  - Integration test with 10-vendor fixture (BGI, Huawei, etc.) covering high-risk vs low-risk outcomes.
+
+---
+
+### Team
+
+- Student founder at [your university] focused on the intersection of biotech and compliance infra.
+- Demonstrated ability to ship:
+  - BIS ingestion, fuzzy matching, and LLM normalization.
+  - Full pipeline in weeks, plus tests and CI hooks via pytest.
+- Actively recruiting:
+  - Advisors in export control, sanctions, and biotech operations.
+  - Early design partners among labs and biotechs.
+
+---
+
+### Why Nucleate
+
+- Nucleate’s portfolio spans therapeutics, tools, platforms, and sustainability. All ultimately rely on vendor and partner ecosystems that will come under increasing regulatory scrutiny.
+- BioGate can:
+  - Help Nucleate teams avoid hidden compliance landmines as they scale manufacturing and collaborations.
+  - Provide a standardized way to document vendor risk for investors, partners, and regulators.
+- In return, Nucleate:
+  - Offers access to high-signal founders with real supply chains and compliance needs.
+  - Provides mentorship in IP/regulatory pathways and connections to pharma / biotech compliance leaders.
+
+---
+
+### What We’re Looking For
+
+- Acceptance into Nucleate Activator to:
+  - Work closely with 1–3 Nucleate teams as design partners.
+  - Validate and improve the risk engine on real vendor data.
+  - Build early case studies and references.
+- Introductions to:
+  - Biotech / lab compliance and operations leaders willing to pilot BioGate.
+

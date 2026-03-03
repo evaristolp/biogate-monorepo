@@ -11,10 +11,13 @@ import logging
 import os
 import sys
 
-# Ensure scripts directory is on path so we can import ingest_* modules
+# Ensure scripts directory is on path so we can import ingest_* modules and
+# the shared source_connectors registry.
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
+
+import source_connectors
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,23 +26,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-INGESTIONS = [
-    ("BIS Entity List", "ingest_bis"),
-    ("OFAC SDN", "ingest_ofac"),
-    ("UFLPA", "ingest_uflpa"),
-]
-
 
 def run_all() -> None:
     results: dict[str, str] = {}  # name -> "success" | "failed"
     errors: dict[str, str] = {}  # name -> error message
 
-    for display_name, module_name in INGESTIONS:
+    # Import modules so they can register connectors with the shared registry.
+    # This keeps individual ingest_* scripts self-contained while allowing
+    # run_all_ingestion to treat them via a common SourceConnector interface.
+    import ingest_bis  # noqa: F401
+    import ingest_ofac  # noqa: F401
+    import ingest_uflpa  # noqa: F401
+
+    connectors = source_connectors.get_connectors()
+    if not connectors:
+        logger.error("No watchlist connectors registered; nothing to run.")
+        sys.exit(1)
+
+    for connector in connectors:
+        display_name = connector.name
         logger.info("Starting ingestion: %s", display_name)
         try:
-            module = __import__(module_name)
-            main = getattr(module, "main")
-            main()
+            connector.run()
             results[display_name] = "success"
             logger.info("Completed ingestion: %s", display_name)
         except SystemExit as e:

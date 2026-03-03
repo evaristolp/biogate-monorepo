@@ -1,0 +1,3 @@
+     Supplier,Country of Origin,expected_tier,logic_test_case,garbage1,garbage2
+     BGI Group,China,RED,Hardcoded,foo,bar
+     Agilent Technologies,USA,GREEN,Noise,baz,qux

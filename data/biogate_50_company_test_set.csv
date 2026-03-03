@@ -1,0 +1,51 @@
+vendor_name,country,expected_tier,logic_test_case
+BGI Group,China,RED,Hardcoded Override (NDAA Target)
+MGI Tech Co Ltd,China,RED,Hardcoded Override (NDAA Target)
+WuXi AppTec,China,RED,Hardcoded Override (NDAA Target)
+WuXi Biologics,China,RED,Hardcoded Override (NDAA Target)
+Complete Genomics Inc,USA,RED,Hardcoded Override (NDAA Target)
+Dahua Technology,China,RED,Direct Watchlist Match (100%)
+Hangzhou Hikvision,China,RED,Direct Watchlist Match (100%)
+BGI Shenzhen,China,RED,Hardcoded Substring Match
+MGI Tech (US) Inc,USA,RED,Subsidiary of Red Parent
+WuXi Advanced Therapies,USA,RED,Subsidiary of Red Parent
+Huawei Technologies,China,AMBER,Strong Alias (70-95% score)
+BGI Research,China,AMBER,Strong Alias (70-95% score)
+Sinovac Biotech,China,AMBER,Strong Alias (70-95% score)
+Inspur Group,China,AMBER,Strong Alias (70-95% score)
+Sugon,China,AMBER,Strong Alias (70-95% score)
+Hytera Communications,China,AMBER,Strong Alias (70-95% score)
+ZTE Corporation,China,AMBER,Strong Alias (70-95% score)
+Beijing Genomics Institute,China,AMBER,Strong Alias (70-95% score)
+Wuhan Institute of Virology,China,AMBER,High-Risk Entity Review
+Huawei Marine Networks,China,AMBER,Subsidiary Review
+Shenzhen Mindray Bio-Medical,China,YELLOW,Country of Concern / Partial Match
+GenScript Biotech,China,YELLOW,Country of Concern / Partial Match
+Sino Biological,China,YELLOW,Country of Concern / Partial Match
+Pharmaron Beijing,China,YELLOW,Country of Concern / Partial Match
+Joinn Laboratories,China,YELLOW,Country of Concern / Partial Match
+KingMed Diagnostics,China,YELLOW,Country of Concern / Partial Match
+Beijing Tsingke Biotech,China,YELLOW,Country of Concern / Partial Match
+Shanghai Zhangjiang Biotech,China,YELLOW,Country of Concern / Partial Match
+Dawing Information Industry,China,YELLOW,Country of Concern / Partial Match
+Sinopharm Group,China,YELLOW,Country of Concern / Partial Match
+Legend Biotech,USA,YELLOW,Possible Subsidiary Chain
+CanSino Biologics,China,YELLOW,Country of Concern / Partial Match
+Asymchem Laboratories,China,YELLOW,Country of Concern / Partial Match
+Inspur Systems Inc,USA,YELLOW,Partial Alias Match
+Wuhan Institute of Biological Products,China,YELLOW,Country of Concern
+Thermo Fisher Scientific,USA,GREEN,Noise Reduction (Stop-word test)
+Illumina Inc,USA,GREEN,Noise Reduction (Stop-word test)
+Agilent Technologies,USA,GREEN,Noise Reduction (Stop-word test)
+Waters Corporation,USA,GREEN,Noise Reduction (Stop-word test)
+Bio-Rad Laboratories,USA,GREEN,Noise Reduction (Stop-word test)
+Qiagen NV,Netherlands,GREEN,Noise Reduction (Stop-word test)
+Danaher Corporation,USA,GREEN,Noise Reduction (Stop-word test)
+Merck KGaA,Germany,GREEN,Noise Reduction (Stop-word test)
+Sigma-Aldrich,USA,GREEN,Noise Reduction (Stop-word test)
+Charles River Laboratories,USA,GREEN,Noise Reduction (Stop-word test)
+Lonza Group,Switzerland,GREEN,Noise Reduction (Stop-word test)
+Sartorius AG,Germany,GREEN,Noise Reduction (Stop-word test)
+New England Biolabs,USA,GREEN,Noise Reduction (Stop-word test)
+Eppendorf SE,Germany,GREEN,Noise Reduction (Stop-word test)
+Beckman Coulter,USA,GREEN,Noise Reduction (Stop-word test)

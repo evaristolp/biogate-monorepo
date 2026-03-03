@@ -18,9 +18,16 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from scripts.fuzzy_match import match_vendor
+from scripts.fuzzy_match import match_vendor, exact_match_vendor
 
-load_dotenv()
+from backend.scoring.parent_graph import resolve_parent_chain
+from backend.scoring.risk_engine import (
+    score_vendor,
+    strip_corporate_suffixes,
+    is_biosecure_direct_match,
+)
+
+load_dotenv(dotenv_path=_REPO_ROOT / ".env")
 
 logger = logging.getLogger(__name__)
 
@@ -29,22 +36,6 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 # Placeholder UUID for "default" organization until multi-tenant
 DEFAULT_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001"
-
-# Risk tiers by highest match score (aligned with observed match quality)
-TIER_RED = 80    # confirmed watchlist match
-TIER_AMBER = 65  # probable match, needs human review
-TIER_YELLOW = 50  # low confidence match
-
-
-def _score_to_tier(score: int) -> str:
-    if score >= TIER_RED:
-        return "red"
-    if score >= TIER_AMBER:
-        return "amber"
-    if score >= TIER_YELLOW:
-        return "yellow"
-    return "green"
-
 
 def normalize_vendor_name(raw: str) -> str:
     """
@@ -99,14 +90,24 @@ def run_audit_pipeline(
     if len(vendors_data) != len(rows):
         raise RuntimeError("Failed to insert vendor records")
 
-    # 3. Claude normalization (batch); skip if unavailable
+    # 3. Claude normalization (batch); skip or fall back safely if unavailable or in async context
     raw_names = [r["raw_input_name"] for r in vendor_rows]
     claude_results: list[dict[str, Any]] = []
     try:
         from .vendor_normalizer import normalize_vendors as claude_normalize_vendors
+        # asyncio.run() cannot be called from a running event loop (e.g. FastAPI request
+        # handlers), so detect that case and skip normalization rather than raising.
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop is not None and loop.is_running():
+            raise RuntimeError("Claude normalization skipped in async context")
         claude_results = asyncio.run(claude_normalize_vendors(raw_names))
     except ImportError as e:
         logger.warning("Claude normalizer not available (install anthropic): %s", e)
+    except RuntimeError as e:
+        logger.warning("Claude normalization disabled: %s", e)
     except Exception as e:
         logger.warning("Claude normalization failed, using input names: %s", e)
     # Map Claude result by raw_name for lookup
@@ -118,6 +119,7 @@ def run_audit_pipeline(
 
     # 4. Build normalized_vendors (merge Claude + vendor row), run fuzzy match, then parent check
     risk_summary: dict[str, int] = {"red": 0, "amber": 0, "yellow": 0, "green": 0}
+    vendor_updates: list[dict[str, Any]] = []
     for i, v in enumerate(vendors_data):
         raw_name = vendor_rows[i]["raw_input_name"]
         claude = claude_by_raw.get(raw_name) or {}
@@ -126,47 +128,102 @@ def run_audit_pipeline(
         country_hint = (claude.get("country_hint") or "").strip() or None
         equipment_type_hint = (claude.get("equipment_type_hint") or "").strip() or None
 
-        # Fuzzy match on normalized name (or raw if same)
         match_name = normalized_name or raw_name
-        matches = match_vendor(match_name, threshold=50, top_n=5)
+        # 1. Hardcoded BIOSECURE bypass: if raw or normalized contains named entity → RED, skip fuzzy
+        if is_biosecure_direct_match(raw_name) or is_biosecure_direct_match(normalized_name or ""):
+            matches = [{
+                "matched_name": raw_name or normalized_name,
+                "score": 100,
+                "source_list": "BIOSECURE_NAMED",
+                "country": None,
+                "match_type": "name",
+            }]
+            logger.info("BIOSECURE direct match for %r -> RED (bypass fuzzy)", match_name)
+        else:
+            # 2. Pre-fuzzy: match on root entity name (strip corporate suffixes to reduce false positives)
+            query_name = strip_corporate_suffixes(match_name) or match_name
+            exact = exact_match_vendor(query_name)
+            if exact:
+                matches = [dict(exact)]
+                logger.info("Exact match for %r -> %s (RED)", query_name, exact["matched_name"])
+            else:
+                matches = match_vendor(query_name, threshold=60, top_n=5)
         logger.info(
             "match_vendor(%r) -> %s",
             match_name,
             [(m["matched_name"], m["score"], m.get("source_list")) for m in matches] if matches else "[]",
         )
         fuzzy_score = matches[0]["score"] if matches else 0
-        match_evidence = [dict(m) for m in matches] if matches else None
+        match_evidence_raw = [dict(m) for m in matches] if matches else []
 
         risk_source: str | None = None
         parent_match_evidence: dict[str, Any] | None = None
-        effective_score = int(round(fuzzy_score))
+        parent_chain: list[dict[str, Any]] = []
 
-        # After normalization, before risk tier: if vendor has parent_company, match parent on watchlist.
-        # If parent's score > vendor's score, use parent's score as effective_score and set risk_source to parent_company.
+        # Resolve parent chain from graph (vendor name and parent_company_hint)
+        for name in [match_name, parent_company_hint]:
+            if not name:
+                continue
+            chain = resolve_parent_chain(name, max_depth=2)
+            if len(chain) > len(parent_chain):
+                parent_chain = chain
         if parent_company_hint:
-            parent_matches = match_vendor(parent_company_hint, threshold=50, top_n=5)
+            parent_query = strip_corporate_suffixes(parent_company_hint) or parent_company_hint
+            parent_matches = match_vendor(parent_query, threshold=60, top_n=5)
             if parent_matches:
                 parent_score = parent_matches[0]["score"]
                 if parent_score > fuzzy_score:
-                    effective_score = int(round(parent_score))
                     risk_source = "parent_company"
                     parent_match_evidence = dict(parent_matches[0])
                     logger.info(
-                        "parent_company overrides: %r -> %s (parent score %s > vendor %s), effective_score=%s",
+                        "parent_company overrides: %r -> %s (parent score %s > vendor %s)",
                         parent_company_hint,
                         parent_match_evidence.get("matched_name"),
                         parent_score,
                         fuzzy_score,
-                        effective_score,
                     )
 
-        tier = _score_to_tier(int(effective_score))
-        # Bump to at least amber when risk came from parent match
-        if risk_source == "parent_company" and tier == "green":
-            tier = "amber"
+        # Risk scoring engine: tier, confidence, reasoning from config + graph
+        try:
+            risk_result = score_vendor(
+                match_evidence_raw,
+                country=country_hint or vendor_rows[i].get("country"),
+                parent_chain=parent_chain if parent_chain else None,
+                parent_company_is_biosecure_named=bool(
+                    parent_company_hint and is_biosecure_direct_match(parent_company_hint)
+                ),
+                semantic_score=None,
+                vendor_name=match_name,
+            )
+        except Exception as e:
+            logger.exception(
+                "Risk scoring failed for vendor %r, defaulting to yellow: %s",
+                raw_name,
+                e,
+                exc_info=True,
+            )
+            risk_result = None
+
+        if risk_result is not None:
+            tier = risk_result.tier
+            effective_score = risk_result.confidence_score
+            match_evidence = [m.model_dump() for m in risk_result.match_evidence]
+            risk_reasoning = risk_result.reasoning
+        else:
+            tier = "yellow"
+            effective_score = int(round(fuzzy_score))
+            match_evidence = match_evidence_raw
+            risk_reasoning = "Scoring failed; conservative default tier applied."
+
         risk_summary[tier] += 1
 
-        supabase_client.table("vendors").update({
+        # Collect vendor updates for batched upsert to avoid per-vendor HTTP calls.
+        update_payload: dict[str, Any] = {
+            # Include required columns so PostgREST upsert never attempts to write NULLs
+            # into NOT NULL fields (even on conflict updates).
+            "id": v["id"],
+            "audit_id": audit_id,
+            "raw_input_name": raw_name,
             "normalized_name": normalized_name or None,
             "country": country_hint or vendor_rows[i].get("country"),
             "parent_company": parent_company_hint,
@@ -176,7 +233,15 @@ def run_audit_pipeline(
             "risk_source": risk_source,
             "parent_match_evidence": parent_match_evidence,
             "effective_score": effective_score,
-        }).eq("id", v["id"]).execute()
+            "risk_reasoning": risk_reasoning,
+        }
+        vendor_updates.append(update_payload)
+
+    # Persist vendor scoring results in batches (upsert on primary key id).
+    batch_size = 500
+    for i in range(0, len(vendor_updates), batch_size):
+        batch = vendor_updates[i : i + batch_size]
+        supabase_client.table("vendors").upsert(batch, on_conflict="id").execute()
 
     # 5. Update audit complete
     supabase_client.table("audits").update({
@@ -184,7 +249,26 @@ def run_audit_pipeline(
         "completed_at": now,
     }).eq("id", audit_id).execute()
 
-    # 6. Fetch updated vendors for response
+    # 6. Generate and store JSON risk report
+    try:
+        from backend.report import generate_risk_report
+        from backend.config.scoring_config import get_scoring_config
+        report = generate_risk_report(str(audit_id), supabase_client)
+        config = get_scoring_config()
+        report_row = {
+            "audit_id": audit_id,
+            "report_json": report,
+            "pipeline_version": "1.0",
+            "scoring_config_version": config.version,
+        }
+        supabase_client.table("audit_reports").upsert(
+            report_row,
+            on_conflict="audit_id",
+        ).execute()
+    except Exception as e:
+        logger.warning("Failed to generate or store risk report: %s", e)
+
+    # 7. Fetch updated vendors for response
     vendors_final_resp = supabase_client.table("vendors").select("*").eq(
         "audit_id", audit_id
     ).order("created_at").execute()

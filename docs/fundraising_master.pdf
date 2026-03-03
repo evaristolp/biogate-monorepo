@@ -1,0 +1,252 @@
+## BioGate Fundraising Master Doc (Week 3)
+
+### 1. Master Pitch (Reusable)
+
+**One-liner**
+
+BioGate is an AI-powered vendor risk platform for biotech and life-science supply chains, turning messy procurement spreadsheets into structured audits that automatically flag sanctioned and high-risk vendors.
+
+**Problem**
+
+- Biotech and life-science companies are under increasing pressure from the BIOSECURE Act, BIS Entity List / OFAC sanctions, and UFLPA.
+- Today vendor screening is:
+  - Manual (analysts copy/paste names into government sites)
+  - Slow (days–weeks per audit)
+  - Error-prone (name variants, parents/subsidiaries, and aliases are easy to miss)
+- A single missed high-risk vendor can mean supply disruption, reputational damage, and regulatory exposure.
+
+**Solution**
+
+BioGate provides a `/audits/upload` API endpoint and web UI where compliance or procurement teams:
+
+1. Upload a vendor CSV exported from their ERP/procurement system.
+2. BioGate:
+   - Normalizes vendor names with Anthropic Claude.
+   - Expands to parents/subsidiaries via LLM hints.
+   - Screens vendors against BIS, OFAC, UFLPA and other watchlists ingested into Supabase.
+   - Runs fuzzy matching to catch high-risk matches and near-matches.
+   - Assigns Red / Amber / Yellow / Green risk tiers with full match evidence.
+3. Returns a structured audit: risk summary, flagged vendors, evidence, and parent-company reasoning.
+
+**Why now**
+
+- BIOSECURE and related regulations are moving from “best practice” to hard requirements for biotech / life-science orgs.
+- Companies already have messy procurement exports; they need a dedicated layer that:
+  - Normalizes vendor identities.
+  - Connects to evolving watchlists.
+  - Produces auditor-friendly evidence.
+- Foundation models (Claude) + modern infra (Supabase, Rapidfuzz) make high-recall, explainable screening feasible.
+
+**What’s built (Week 3)**
+
+- Supabase backend live with:
+  - BIS ingestion script and watchlist_entities table.
+  - Pattern to extend to OFAC and UFLPA.
+- Full CSV → audit pipeline:
+  - `/audits/upload` FastAPI endpoint (multipart CSV).
+  - CSV schema + validation (headers/rows/file limits).
+  - `audits` + `vendors` tables, with:
+    - raw_input_name, normalized_name, country, parent_company, equipment_type
+    - risk_tier (red/amber/yellow/green)
+    - match_evidence (JSONB), risk_source, parent_match_evidence, effective_score
+- Fuzzy matching engine:
+  - Rapidfuzz token_sort_ratio over watchlist entities and aliases.
+  - Risk tiers from effective_score (>=80 red, >=65 amber, >=50 yellow, <50 green).
+  - Parent-company expansion: if parent score > vendor score, parent score drives effective risk.
+- Anthropic Claude normalization:
+  - Batch `normalize_vendors()` call given vendor names.
+  - Returns normalized_name, country_hint, parent_company_hint, equipment_type_hint.
+- Automated tests:
+  - Unit tests for `/audits/upload` validation.
+  - Integration test that runs a 10-vendor CSV fixture through the entire pipeline and asserts expected tiers (with one xfail around Agilent pending threshold tuning).
+
+**Market**
+
+- Wedge: US biotech / CROs / diagnostic labs needing supply-chain compliance (BIOSECURE, BIS/OFAC, UFLPA).
+- Expansion: medtech and broader regulated deep-tech (AI hardware, semis) facing similar watchlist constraints.
+- Long-term: become the “compliance data plane” between ERP/procurement and regulators.
+
+**Business model**
+
+- B2B SaaS:
+  - Priced by number of audits, vendor count, or annual spend tier.
+  - Early motion: paid pilots with 1–3 design partners, then standardize into annual contracts.
+
+---
+
+### 2. Dorm Room Fund (DRF) – Application Notes
+
+**Status**
+
+- Rolling applications; open now.
+- At least one founder must be a current student, recent grad, or on a gap year.
+- Company must be US-incorporated (or planning to).
+
+**Key questions and tailored answers**
+
+- **Is anyone on your team currently a student, a recent graduate (within the last 24–36 months), or on a gap year?**
+  - Yes – [your name], a [your school] student (and any co-founders as applicable).
+
+- **Have you incorporated or are you planning on incorporating in the US?**
+  - Yes. BioGate is / will be a US C-corporation.
+
+- **What is the name of your company?**
+  - BioGate.
+
+- **Who’s the founding team?**
+  - [List founder names, comma separated].
+
+- **What are your LinkedIns?**
+  - [LinkedIn URLs, comma separated].
+
+- **And schools?**
+  - [Your school(s), comma separated].
+
+- **Tweet-length pitch (140 characters):**
+  - *BioGate auto-screens biotech vendor lists against BIS/OFAC/UFLPA using AI to flag high-risk vendors in minutes instead of weeks.*
+
+- **What industry is your company in?**
+  - Compliance / RegTech, B2B SaaS, Healthcare & Life-Science Tools.
+
+- **Tell us what is unique about your startup (5–6 sentences):**
+  - *Governments are tightening scrutiny on biotech supply chains via BIOSECURE, BIS, OFAC, and UFLPA. Today, compliance teams reconcile vendor spreadsheets with multiple watchlists by hand, which is slow and misses risky relationships like parent companies and aliases. BioGate automates this by ingesting BIS/OFAC/UFLPA into a Supabase-backed watchlist, running fuzzy matching against vendor names and aliases, and using Claude to normalize vendors and expand to parent companies. Our `/audits/upload` endpoint turns a CSV of vendors into a structured audit with Red/Amber/Yellow/Green tiers and full match evidence. We’re focused specifically on biotech and life-science supply chains, where regulatory risk is acute and growing.*
+
+- **Where are you in your fundraising process?**
+  - We’re just starting out and haven’t raised any money yet. (Update this as needed.)
+
+Use diversity questions to accurately reflect the founding team; they don’t affect the decision.
+
+**What DRF looks for & how BioGate maps:**
+
+- Strong founder-market fit → student founder focused on biotech compliance, shipping quickly.
+- Deep understanding of customers → specific stories from labs/biotechs about manual vendor audits.
+- Clear need for venture scale → regulatory-driven, must-have infra for a growing biotech ecosystem.
+
+---
+
+### 3. Nucleate Activator – Application Notes
+
+**Status**
+
+- Equity-free life-science accelerator, student-led.
+- Applications open for the 2025–2026 cohort (deadline historically around October; check apply.nucleate.org for exact date).
+
+**Problem (Nucleate framing)**
+
+Biotech and life-science organizations face increasing regulatory pressure (BIOSECURE, BIS/OFAC/UFLPA) around who they buy from, especially instruments, reagents, sequencing, and CRO services. Today, vendor screening is manual and error-prone, usually done in spreadsheets and government websites, which slows research and manufacturing and exposes labs and companies to serious compliance risk.
+
+**Technology / product**
+
+BioGate is a vendor risk intelligence platform for biotech:
+
+- Supabase backend ingesting BIS (pattern for OFAC/UFLPA).
+- Fuzzy matching across watchlist_entities with entity + alias coverage.
+- Claude-based normalization for vendor names, country hints, parent-company hints, equipment-type hints.
+- `/audits/upload` API that turns vendor CSVs into:
+  - Normalized vendor + parent-company names.
+  - Risk tiers (Red/Amber/Yellow/Green).
+  - Full match evidence and parent-company reasoning.
+
+**Team**
+
+- Student founder at [your school] with software + biotech exposure.
+- 180-day build plan already in execution; shipped:
+  - BIS ingestion script.
+  - Full audit pipeline.
+  - Claude integration.
+  - Unit + integration tests.
+- Actively looking for regulatory and biotech compliance advisors (Nucleate mentors are ideal).
+
+**Traction**
+
+- Working Supabase instance with BIS data.
+- `/audits/upload` endpoint and tables in production.
+- Fuzzy match + parent expansion integrated and tested.
+- 10-vendor integration test fixture.
+- Early conversations with prospective biotech / lab users (you fill in names / anonymized roles).
+
+**Why Nucleate**
+
+- Nucleate’s network of therapeutics, tools, and platform companies all have vendor and compliance challenges as they scale.
+- BioGate can directly help Nucleate portfolio companies accelerate vendor audits and avoid BIOSECURE-style friction.
+- In return, we get design partners, feedback on risk models, and intros to compliance leaders.
+
+---
+
+### 4. IndieBio – Application Notes
+
+**Status**
+
+- Rolling applications via SOSV; focus on Human & Planetary Health, life-science tools, and enabling platforms.
+
+**Core application snippets**
+
+- **One-sentence description**
+  - *BioGate helps biotech and life-science companies automatically screen their vendors against BIS/OFAC/UFLPA and other watchlists, using AI to flag high-risk suppliers in minutes instead of weeks.*
+
+- **Problem & who it’s for**
+  - *Biotechs, CROs, and diagnostics labs must comply with BIOSECURE, BIS Entity List, OFAC, and UFLPA. Supply chains are global and complex. Compliance teams today do manual, brittle searches across government sites and spreadsheets. This is slow and misses relationships like aliases and parent companies, creating regulatory, reputational, and operational risk.*
+
+- **What’s novel**
+  - Biotech-specific focus; not generic sanctions SaaS.
+  - Combined fuzzy matching + LLM normalization + parent expansion.
+  - Stores risk + evidence in a schema tailored for audits and legal review.
+
+- **Traction**
+  - Shipped full pipeline in weeks (see “What’s built” above).
+  - Integration tests proving end-to-end flow.
+  - Starting real design-partner conversations (fill in specifics).
+
+- **Team**
+  - Student founder with strong bias to action and a clear 180-day roadmap.
+
+- **Why IndieBio**
+  - Their portfolio companies will need supply-chain risk infra; this is complementary, not competitive, with wet-lab innovation.
+  - SOSV/IndieBio can help pressure-test compliance and go-to-market with real biotechs.
+
+---
+
+### 5. Petri – Outreach Notes
+
+Petri doesn’t have a short public application. Use a concise email + deck.
+
+**Email outline**
+
+- Subject: *BioGate – BIOSECURE/BIS compliance infra for biotech supply chains*
+- Introduce yourself as a student founder.
+- One-liner + 2–3 bullets on what you’ve already shipped (Supabase, `/audits/upload`, Claude integration).
+- State why Petri is the right partner (founder-led biotech focus; their companies have complex supply chains).
+- Ask for a short call to share a 5–7 slide deck and early roadmap.
+
+**Framing for Petri**
+
+- You’re infra for their typical companies: tools, platforms, engineered biology with global vendors.
+- You de-risk their portfolio’s ability to pass compliance scrutiny as they move from lab to manufacturing/scale.
+
+---
+
+### 6. Life Science Angels – Positioning Notes
+
+**Eligibility checklist**
+
+- US C-corp: Yes (or will be).
+- IP controlled by US entity: Yes (software and data).
+- Sector: Life Science Tools / Digital Health / Compliance.
+- Prefer warm referral (IndieBio, SkyDeck, Nucleate, etc. – worth building relationships first).
+
+**Narrative bullets for their 40-question Dealum form**
+
+- **Company overview**
+  - *BioGate is a vendor risk and sanctions-screening platform designed for biotech and life-science supply chains. We ingest BIS/OFAC/UFLPA and related watchlists, then use fuzzy matching and AI-based normalization to automatically screen procurement vendor lists and assign Red/Amber/Yellow/Green risk tiers with full audit evidence.*
+
+- **Unmet need**
+  - Life-science supply chains are increasingly global and regulated; general-purpose sanctions tools don’t understand the nuances of biotech vendors and equipment.
+
+- **Technology**
+  - Supabase-backed watchlists, fuzzy matching, Claude-based normalization, parent expansion, risk tiers, evidence.
+
+- **Commercial**
+  - SaaS subscription, initial focus on pilot deals with biotechs / CROs.
+
+You’ll likely apply here once you have stronger traction (paid pilots / revenue).
+

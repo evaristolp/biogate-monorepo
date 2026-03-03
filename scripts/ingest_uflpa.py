@@ -22,6 +22,8 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from supabase import create_client
 
+import source_connectors
+
 load_dotenv()
 
 # --- Config ---
@@ -198,3 +200,6 @@ def main() -> None:
 if __name__ == "__main__":
     main()
     sys.exit(0)
+
+# Register connector for shared ingestion runner (e.g. run_all_ingestion).
+source_connectors.register_connector("UFLPA Entity List", main)

@@ -1,0 +1,117 @@
+## BioGate x Dorm Room Fund – Deck Outline
+
+Target: 8–10 slides, 10-minute conversation, optimized for DRF partners.
+
+---
+
+### Slide 1 – Title
+
+- **Title:** BioGate
+- **Subtitle:** AI vendor risk platform for biotech & life-science supply chains
+- Founder name(s), school(s)
+- Contact: email / site
+
+---
+
+### Slide 2 – Founder Story / Why This
+
+- Who you are (student, background).
+- How you ran into or discovered the BIOSECURE / sanctions vendor problem.
+- 1–2 bullets that show you “go unreasonably deep” (e.g., built BIS ingestion scripts, read the BIOSECURE text, talked to X compliance folks).
+
+---
+
+### Slide 3 – Problem
+
+- Biotech / life-science vendor compliance is:
+  - Manual spreadsheets + government websites.
+  - Slow, error-prone.
+  - Getting harder due to BIOSECURE / BIS / OFAC / UFLPA.
+- Concrete example:
+  - “Compliance weeks of work to clear one vendor list.”
+
+---
+
+### Slide 4 – Solution
+
+- Diagram: CSV of vendors → BioGate → audit API + dashboard.
+- Callouts:
+  - Ingests BIS/OFAC/UFLPA.
+  - Fuzzy matching + Claude normalization + parent expansion.
+  - Risk tiers + evidence for legal/compliance sign-off.
+
+---
+
+### Slide 5 – How It Works (Under the Hood)
+
+- Supabase watchlist ingestion (BIS, pattern for OFAC/UFLPA).
+- Fuzzy matching with Rapidfuzz (names + aliases).
+- Claude API:
+  - normalized_name
+  - country_hint
+  - parent_company_hint
+  - equipment_type_hint
+- Risk model: Red/Amber/Yellow/Green with parent-company overrides.
+
+Keep this high-level; don’t do a live demo.
+
+---
+
+### Slide 6 – Traction (Week 3)
+
+- Supabase live; BIS ingestion script in production.
+- `/audits/upload` FastAPI endpoint completed.
+- Audit + vendor tables with risk tiers and evidence.
+- Integration tests:
+  - 10-vendor CSV fixture.
+  - Correctly flags BGI / Huawei as high-risk.
+  - Non-red expectations for others (with one xfail around Agilent).
+- Early convos with [X] labs / biotechs (add specifics).
+
+---
+
+### Slide 7 – Market & Wedge
+
+- Initial customers: US biotech / CRO / labs with:
+  - >X vendors.
+  - Regulatory exposure (BIOSECURE, export control).
+- TAM narrative:
+  - Compliance & risk budget in life sciences.
+  - Adjacent expansion (medtech, deep-tech hardware).
+
+---
+
+### Slide 8 – Business Model & GTM
+
+- SaaS pricing:
+  - By number of vendor audits / vendor count / spend.
+- GTM:
+  - Start with 1–3 paid pilots (design partners).
+  - Expand within org (multi-teams, multi-sites).
+  - Eventually: integrations with popular ERPs/procurement tools.
+
+---
+
+### Slide 9 – Roadmap (Next 6–12 Months)
+
+- Near term:
+  - OFAC/UFLPA ingestion.
+  - Composite risk scoring engine.
+  - First design partners live.
+- Medium term:
+  - Deeper integrations.
+  - Broader watchlist coverage.
+  - First $Xk MRR.
+
+---
+
+### Slide 10 – Why DRF / The Ask
+
+- Why you want DRF:
+  - Student-focused capital.
+  - Network of early-stage SaaS and infra founders.
+  - Help with design partners and next round.
+- The ask:
+  - $90k–$250k on DRF standard terms.
+  - Specific intros (biotech / compliance leaders, etc.).
+

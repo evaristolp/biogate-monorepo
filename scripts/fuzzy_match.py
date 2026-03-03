@@ -32,7 +32,8 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 # Loaded once, reused for all matches
 _watchlist_choices: list[str] = []
-_watchlist_meta: list[tuple[str, str, str | None, str]] = []  # (entity_name, source_list, country, match_type)
+# (entity_name, source_list, country, match_type, risk_category)
+_watchlist_meta: list[tuple[str, str, str | None, str, str | None]] = []
 
 
 class MatchResult(TypedDict):
@@ -41,6 +42,7 @@ class MatchResult(TypedDict):
     source_list: str
     country: str | None
     match_type: str
+    risk_category: str | None
 
 
 def load_watchlist() -> None:
@@ -60,7 +62,7 @@ def load_watchlist() -> None:
     while True:
         resp = (
             client.table("watchlist_entities")
-            .select("entity_name, aliases, source_list, country")
+            .select("entity_name, aliases, source_list, country, risk_category")
             .range(offset, offset + page_size - 1)
             .execute()
         )
@@ -73,7 +75,7 @@ def load_watchlist() -> None:
     logger.info("Loaded %d entities from watchlist_entities", len(all_data))
 
     choices: list[str] = []
-    meta: list[tuple[str, str, str | None, str]] = []
+    meta: list[tuple[str, str, str | None, str, str | None]] = []
 
     for row in all_data:
         entity_name = (row.get("entity_name") or "").strip()
@@ -83,10 +85,13 @@ def load_watchlist() -> None:
         country = row.get("country")
         if country is not None:
             country = str(country).strip() or None
+        risk_category = row.get("risk_category")
+        if risk_category is not None:
+            risk_category = str(risk_category).strip() or None
 
         # Index canonical name
         choices.append(entity_name)
-        meta.append((entity_name, source_list, country, "name"))
+        meta.append((entity_name, source_list, country, "name", risk_category))
 
         # Index each alias
         aliases = row.get("aliases") or []
@@ -96,11 +101,47 @@ def load_watchlist() -> None:
             a = (a or "").strip()
             if a and a != entity_name:
                 choices.append(a)
-                meta.append((entity_name, source_list, country, "alias"))
+                meta.append((entity_name, source_list, country, "alias", risk_category))
 
     _watchlist_choices = choices
     _watchlist_meta = meta
     logger.info("Indexed %d searchable names (entities + aliases)", len(choices))
+
+
+def _normalize_for_exact(s: str) -> str:
+    """Normalize for exact match: strip, lowercase, collapse whitespace."""
+    if not s or not isinstance(s, str):
+        return ""
+    return " ".join(s.split()).lower().strip()
+
+
+def exact_match_vendor(
+    vendor_name: str,
+) -> MatchResult | None:
+    """
+    Exact match (case-insensitive, trimmed) against watchlist entity names and aliases.
+    If the vendor name exactly matches a known BCC/watchlist name, returns a single
+    MatchResult with score 100 so the pipeline can immediately flag RED. Run this
+    before fuzzy matching to avoid threshold edge cases on known entities.
+    """
+    load_watchlist()
+    if not vendor_name or not _watchlist_choices:
+        return None
+    needle = _normalize_for_exact(vendor_name)
+    if not needle:
+        return None
+    for idx, choice in enumerate(_watchlist_choices):
+        if _normalize_for_exact(choice) == needle:
+            entity_name, source_list, country, match_type, risk_category = _watchlist_meta[idx]
+            return MatchResult(
+                matched_name=entity_name,
+                score=100,
+                source_list=source_list or "",
+                country=country,
+                match_type=match_type or "name",
+                risk_category=risk_category,
+            )
+    return None
 
 
 def match_vendor(
@@ -130,18 +171,18 @@ def match_vendor(
     )
 
     # (choice, score, index) -> group by (entity_name, source_list), keep best score
-    best_by_entity: dict[tuple[str, str], tuple[int, str | None, str]] = {}
+    best_by_entity: dict[tuple[str, str], tuple[int, str | None, str, str | None]] = {}
     for _choice, score, idx in raw:
-        entity_name, source_list, country, match_type = _watchlist_meta[idx]
+        entity_name, source_list, country, match_type, risk_category = _watchlist_meta[idx]
         key = (entity_name, source_list)
         if key not in best_by_entity or score > best_by_entity[key][0]:
-            best_by_entity[key] = (score, country, match_type)
+            best_by_entity[key] = (score, country, match_type, risk_category)
 
     # Sort by score desc, take top_n
     sorted_entries = sorted(
         [
-            (entity_name, source_list, score, country, match_type)
-            for (entity_name, source_list), (score, country, match_type) in best_by_entity.items()
+            (entity_name, source_list, score, country, match_type, risk_category)
+            for (entity_name, source_list), (score, country, match_type, risk_category) in best_by_entity.items()
         ],
         key=lambda x: -x[2],
     )[:top_n]
@@ -153,8 +194,9 @@ def match_vendor(
             source_list=source_list,
             country=country,
             match_type=match_type,
+            risk_category=risk_category,
         )
-        for entity_name, source_list, score, country, match_type in sorted_entries
+        for entity_name, source_list, score, country, match_type, risk_category in sorted_entries
     ]
 
 
@@ -180,14 +222,15 @@ def _print_table(vendor_name: str, matches: list[MatchResult]) -> None:
         print(f"No matches above threshold for: {vendor_name!r}\n")
         return
 
-    col_names = ["matched_name", "score", "source_list", "country", "match_type"]
-    widths = [max(len(col_names[i]), 4) for i in range(5)]
+    col_names = ["matched_name", "score", "source_list", "country", "match_type", "risk_category"]
+    widths = [max(len(col_names[i]), 4) for i in range(len(col_names))]
     for m in matches:
         widths[0] = max(widths[0], len(str(m.get("matched_name", ""))))
         widths[1] = max(widths[1], len(str(m.get("score", ""))))
         widths[2] = max(widths[2], len(str(m.get("source_list", ""))))
         widths[3] = max(widths[3], len(str(m.get("country") or "")))
         widths[4] = max(widths[4], len(str(m.get("match_type", ""))))
+        widths[5] = max(widths[5], len(str(m.get("risk_category") or "")))
 
     sep = "  "
     header = sep.join(n.ljust(widths[i]) for i, n in enumerate(col_names))
@@ -202,6 +245,7 @@ def _print_table(vendor_name: str, matches: list[MatchResult]) -> None:
             str(m.get("source_list", "")).ljust(widths[2]),
             (str(m.get("country")) if m.get("country") is not None else "").ljust(widths[3]),
             str(m.get("match_type", "")).ljust(widths[4]),
+            str(m.get("risk_category") or "").ljust(widths[5]),
         )
         print(sep.join(row))
     print()

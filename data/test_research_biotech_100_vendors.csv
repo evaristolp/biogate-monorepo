@@ -1,0 +1,101 @@
+vendor,country,parent_company,product_category
+BGI Research,CN,,
+MGI Tech Co,China,,
+Illumina Inc.,USA,,
+Thermo Fisher Scientific,US,,
+Complete Genomics,USA,BGI,
+WuXi AppTec,China,,
+  Agilent Technologies  ,USA,,
+Bio-Rad Laboratories,USA,,
+Sigma-Aldrich,USA,,
+Waters Corporation,USA,,
+BGI Genomics,China,BGI Group,
+Huawei Technologies,CN,,
+MilliporeSigma,USA,Merck,
+Qiagen,Germany,,
+Merck KGaA,DE,,
+Sartorius AG,Germany,,
+New England Biolabs,USA,,
+Eppendorf SE,DE,,
+Beckman Coulter Life Sciences,USA,Danaher,
+Bruker Corporation,USA,,
+PerkinElmer Inc,USA,,
+Abcam,UK,,
+10x Genomics,USA,,
+Pacific Biosciences,USA,,
+Twist Bioscience,USA,,
+NanoString,USA,,
+BGI Group,China,,
+Beijing Genomics Institute,China,,reagents
+GenScript Biotech Corporation,China,,oligos
+Sino Biological,China,,antibodies
+Pharmaron,China,,CRO
+WuXi Biologics,China,WuXi AppTec,
+Dahua Technology,China,,facility
+Hangzhou Hikvision,China,,cameras
+Danaher Corporation,USA,,
+Charles River Labs,USA,,
+Eurofins Scientific,LU,,
+Fisher Scientific,USA,Thermo Fisher,
+Danaher,USA,,
+Zeiss Microscopy,Germany,,
+Leica Microsystems,Germany,,
+Olympus Corporation,Japan,,
+Nikon Instruments,Japan,,
+BD Biosciences,USA,BD,
+Sony Biotechnology,USA,,
+Miltenyi Biotec,Germany,,
+STEMCELL Technologies,Canada,,
+Takara Bio,Japan,,
+Promega Corporation,USA,,
+IDT (Integrated DNA Technologies),USA,Danaher,
+Biotium,USA,,
+Vector Laboratories,USA,,
+R&D Systems,USA,Bio-Techne,
+Bio-Techne,USA,,
+Cell Signaling Technology,USA,,
+Jackson ImmunoResearch,USA,,
+Santa Cruz Biotechnology,USA,,
+Invitrogen,USA,Thermo Fisher,
+Life Technologies,USA,Thermo Fisher,
+Applied Biosystems,USA,Thermo Fisher,
+Labconco,USA,,
+NuAire,USA,,
+Revolutionary Science,USA,,
+Cytiva,USA,Danaher,
+Pall Life Sciences,USA,,
+Sartorius,Germany,,
+Mettler Toledo,USA,,
+Shimadzu,Japan,,
+Waters,USA,,
+Sciex,USA,Danaher,
+Bruker,USA,,
+Thermo Scientific,USA,Thermo Fisher,
+Corning Life Sciences,USA,,
+Greiner Bio-One,Germany,,
+Eppendorf,Germany,,
+VWR,USA,Avantor,
+Avantor,USA,,
+Lonza,Switzerland,,cells
+Cytiva,USA,,media
+WuXi Advanced Therapies,USA,WuXi,
+Complete Genomics Inc,USA,BGI,
+Inspur Group,China,,IT
+ZTE Corp,China,,
+SinoGene Scientific,China,,genes
+Joinn Laboratories,China,,CRO
+KingMed Diagnostics,China,,labs
+Sinovac Biotech,China,,vaccines
+Sugon,China,,HPC
+Hytera,China,,comms
+Huawei Marine,China,Huawei,
+MGI Tech (US),USA,MGI,
+BGI Americas,USA,BGI,
+Legend Biotech,USA,,CAR-T
+Wuhan Institute of Virology,China,,Amber
+Shenzhen Mindray,China,,instruments
+Beijing Tsingke,China,,oligos
+Shanghai Zhangjiang Biotech,China,,reagents
+Asymchem,China,,API
+CanSino,China,,vaccines
+Sinopharm Group,China,,pharma

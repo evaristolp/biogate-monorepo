@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "last_updated": "2025-03-02",
+    "disclaimer": "This subsidiary data is best-effort based on public records. Not all BCC subsidiary relationships are publicly disclosed."
+  },
+  "edges": [
+    {
+      "parent_name": "BGI Group",
+      "child_name": "BGI Genomics",
+      "relationship_type": "subsidiary",
+      "source_citation": "BIS Entity List; corporate structure"
+    },
+    {
+      "parent_name": "BGI Group",
+      "child_name": "MGI Tech",
+      "relationship_type": "subsidiary",
+      "source_citation": "BIS Entity List; MGI Tech (MGI Tech Co Ltd) as BGI affiliate"
+    },
+    {
+      "parent_name": "BGI Group",
+      "child_name": "Complete Genomics",
+      "relationship_type": "acquired_by",
+      "source_citation": "BGI acquisition of Complete Genomics (2013); BIS Entity List"
+    },
+    {
+      "parent_name": "BGI Group",
+      "child_name": "BGI Americas",
+      "relationship_type": "subsidiary",
+      "source_citation": "BGI corporate structure; BIS Entity List"
+    },
+    {
+      "parent_name": "BGI Genomics",
+      "child_name": "Complete Genomics Inc",
+      "relationship_type": "subsidiary",
+      "source_citation": "Post-acquisition entity structure (for testing depth-2 chain)"
+    },
+    {
+      "parent_name": "Huawei Technologies",
+      "child_name": "HiSilicon",
+      "relationship_type": "subsidiary",
+      "source_citation": "Huawei corporate; sanctions designations"
+    },
+    {
+      "parent_name": "Huawei Technologies",
+      "child_name": "Huawei Cloud",
+      "relationship_type": "subsidiary",
+      "source_citation": "Huawei business unit"
+    },
+    {
+      "parent_name": "Huawei Technologies",
+      "child_name": "Honor Device Co",
+      "relationship_type": "subsidiary",
+      "source_citation": "Huawei spin-off; sanctions context"
+    },
+    {
+      "parent_name": "WuXi AppTec",
+      "child_name": "WuXi Biologics",
+      "relationship_type": "subsidiary",
+      "source_citation": "WuXi AppTec corporate structure; BIOSECURE named entity"
+    },
+    {
+      "parent_name": "WuXi AppTec",
+      "child_name": "WuXi Advanced Therapies",
+      "relationship_type": "subsidiary",
+      "source_citation": "WuXi AppTec business unit"
+    },
+    {
+      "parent_name": "WuXi AppTec",
+      "child_name": "WuXi STA",
+      "relationship_type": "subsidiary",
+      "source_citation": "WuXi AppTec (STA) small molecule"
+    }
+  ]
+}

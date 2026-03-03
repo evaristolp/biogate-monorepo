@@ -1,0 +1,69 @@
+# BioGate Risk Scoring Configuration
+# Editable without code changes for compliance and per-customer tuning.
+# version: semver for audit trail
+version: "1.0.0"
+# last_modified: ISO timestamp when config was last updated
+last_modified: "2025-03-02T00:00:00Z"
+
+# tier_thresholds: minimum weighted score for each tier (red >= amber >= yellow)
+# Red: direct BIOSECURE match or confirmed watchlist / BCC subsidiary match (95+)
+# Amber: strong alias match 70-94; human review required
+# Yellow: partial match or country-of-concern (50-69)
+tier_thresholds:
+  red: 95
+  amber: 70
+  yellow: 50
+
+# score_weights: contribution of each signal to composite score (must sum to 1.0)
+# fuzzy_weight: rapidfuzz token_sort_ratio (0-100)
+# semantic_weight: future pgvector similarity (0-100); use 0 until embeddings wired
+# country_weight: 100 if vendor country in country_of_concern else 0
+score_weights:
+  fuzzy_weight: 0.5
+  semantic_weight: 0.3
+  country_weight: 0.2
+
+# country_of_concern: ISO 3166-1 alpha-2 codes; vendors in these countries get country signal
+# BIOSECURE / sanctions context: CN, RU, IR, KP, CU, BY, VE, MM, SY
+country_of_concern:
+  - CN
+  - RU
+  - IR
+  - KP
+  - CU
+  - BY
+  - VE
+  - MM
+  - SY
+
+# hard_red_source_lists: watchlist source_list values that should be treated as
+# intrinsically high-severity when there is a strong, plausible name match.
+hard_red_source_lists:
+  - BIS_ENTITY_LIST
+  - OFAC_SDN
+  - UFLPA
+
+# generic_tokens: common corporate words that should be ignored when checking
+# name plausibility to reduce noisy fuzzy matches (e.g. \"Group\", \"International\").
+generic_tokens:
+  - group
+  - company
+  - international
+  - holding
+  - holdings
+  - industries
+  - industry
+  - systems
+  - technologies
+  - technology
+  - corporation
+  - corp
+  - incorporated
+  - limited
+  - ltd
+
+# hard_red_watchlist_entities: explicit watchlist entity names that should be
+# treated as hard RED even if they are not in BIOSECURE_NAMED_ENTITIES.
+hard_red_watchlist_entities:
+  - Dahua Technology
+  - Hangzhou Hikvision Digital Technology Co., Ltd.

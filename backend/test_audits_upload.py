@@ -1,14 +1,3 @@
-"""Tests for /audits/upload endpoint."""
-
-from fastapi.testclient import TestClient
-
-from backend.main import app
-
-client = TestClient(app)
-
-
-"""Tests for /audits/upload endpoint."""
-
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -18,8 +7,10 @@ from backend.main import app
 client = TestClient(app)
 
 
+@patch("backend.main._get_supabase")
 @patch("backend.main.run_audit_pipeline")
-def test_upload_valid_csv(mock_pipeline):
+def test_upload_valid_csv(mock_pipeline, mock_get_supabase):
+    mock_get_supabase.return_value = object()
     mock_pipeline.return_value = {
         "audit_id": "11111111-1111-1111-1111-111111111111",
         "vendor_count": 2,
@@ -37,6 +28,7 @@ def test_upload_valid_csv(mock_pipeline):
     assert data["vendor_count"] == 2
     assert data["risk_summary"] == {"red": 0, "amber": 1, "yellow": 0, "green": 1}
     assert len(data["vendors"]) == 2
+    mock_get_supabase.assert_called_once()
     mock_pipeline.assert_called_once()
 
 
@@ -57,6 +49,15 @@ def test_upload_empty_vendor_name():
     data = resp.json()
     assert data["valid"] is False
     assert any(e["code"] == "EMPTY_REQUIRED_FIELD" for e in data["errors"])
+
+
+def test_upload_special_chars_only_vendor_name():
+    csv_content = b"vendor_name,supplier_id\n***...,SUP-001\nAcme,SUP-002"
+    resp = client.post("/audits/upload", files={"file": ("vendors.csv", csv_content, "text/csv")})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["valid"] is False
+    assert any(e["code"] == "INVALID_VENDOR_NAME" for e in data["errors"])
 
 
 def test_upload_non_csv_rejected():

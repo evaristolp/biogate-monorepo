@@ -123,3 +123,35 @@ def test_fuzzy_match_partial():
     matched_names = [r["matched_name"] for r in results]
     assert "Bgi Genomics Co., Ltd." in matched_names or "BGI" in matched_names
     assert results[0]["score"] >= 50
+
+
+def test_exact_match_vendor_returns_red_score():
+    """Exact match (case-insensitive) against a known BCC name returns single result with score 100 (RED)."""
+    fuzzy_match._watchlist_choices = []
+    fuzzy_match._watchlist_meta = []
+    with patch.object(fuzzy_match, "load_watchlist", side_effect=_mock_load_watchlist):
+        result = fuzzy_match.exact_match_vendor("Bgi Genomics Co., Ltd.")
+    assert result is not None
+    assert result["matched_name"] == "Bgi Genomics Co., Ltd."
+    assert result["score"] == 100
+    assert result["source_list"] == "BIS_ENTITY_LIST"
+
+
+def test_exact_match_vendor_case_insensitive():
+    """Exact match is case-insensitive so 'BGI' matches watchlist alias 'BGI'."""
+    fuzzy_match._watchlist_choices = []
+    fuzzy_match._watchlist_meta = []
+    with patch.object(fuzzy_match, "load_watchlist", side_effect=_mock_load_watchlist):
+        result = fuzzy_match.exact_match_vendor("BGI")
+    assert result is not None
+    assert result["matched_name"] == "BGI"
+    assert result["score"] == 100
+
+
+def test_exact_match_vendor_no_match_returns_none():
+    """Non-matching name returns None (fuzzy pass will run)."""
+    fuzzy_match._watchlist_choices = []
+    fuzzy_match._watchlist_meta = []
+    with patch.object(fuzzy_match, "load_watchlist", side_effect=_mock_load_watchlist):
+        result = fuzzy_match.exact_match_vendor("Unknown Corp")
+    assert result is None

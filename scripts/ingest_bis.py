@@ -22,12 +22,16 @@ import requests
 from dotenv import load_dotenv
 from supabase import create_client
 
+import source_connectors
+
 load_dotenv()
 
 # --- Config ---
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-CSL_CSV_URL = "https://api.trade.gov/static/consolidated_screening_list/consolidated.csv"
+# Official CSV (trade.gov); fallback to legacy URL if the primary is down
+CSL_CSV_URL = "https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.csv"
+CSL_CSV_URL_FALLBACK = "https://api.trade.gov/static/consolidated_screening_list/consolidated.csv"
 SOURCE_LIST = "BIS_ENTITY_LIST"
 RISK_CATEGORY = "ENTITY_LIST"
 MIN_BIS_ENTITIES = 100  # Fail if fewer — format or filter likely wrong (real list has 600+)
@@ -70,20 +74,25 @@ def _find_column(row: dict, *candidates: str) -> str:
 def download_csv() -> tuple[str, str]:
     """
     Download Consolidated Screening List CSV from trade.gov.
-    Returns (content_str, hex_sha256_hash).
+    Tries official URL first, then fallback. Returns (content_str, hex_sha256_hash).
     """
-    logger.info("Downloading Consolidated Screening List from %s", CSL_CSV_URL)
-    try:
-        resp = requests.get(CSL_CSV_URL, timeout=60)
-        resp.raise_for_status()
-    except requests.RequestException as e:
-        logger.error("Download failed: %s", e)
-        raise SystemExit(1) from e
-
-    content = resp.text
-    file_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-    logger.info("Downloaded %d bytes, SHA-256: %s", len(content), file_hash)
-    return content, file_hash
+    for url in (CSL_CSV_URL, CSL_CSV_URL_FALLBACK):
+        logger.info("Downloading Consolidated Screening List from %s", url)
+        try:
+            resp = requests.get(url, timeout=90)
+            resp.raise_for_status()
+            content = resp.text
+            if not content.strip():
+                raise ValueError("Empty response")
+            file_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            logger.info("Downloaded %d bytes, SHA-256: %s", len(content), file_hash)
+            return content, file_hash
+        except requests.RequestException as e:
+            logger.warning("Download failed for %s: %s", url, e)
+        except ValueError as e:
+            logger.warning("Invalid response from %s: %s", url, e)
+    logger.error("All CSL CSV URLs failed")
+    raise SystemExit(1)
 
 
 def parse_csv(content: str) -> list[dict]:
@@ -139,6 +148,12 @@ def parse_csv(content: str) -> list[dict]:
             "risk_category": RISK_CATEGORY,
             "raw_data": {k: v for k, v in raw.items()},
         })
+
+    # Ensure common trading name "Bgi Genomics" is matchable for Bgi Research (DoD: BGI Genomics score > 90)
+    for e in entities:
+        if e["entity_name"] == "Bgi Research" and "Bgi Genomics" not in (e["aliases"] or []):
+            e["aliases"] = list(e["aliases"] or []) + ["Bgi Genomics"]
+            break
 
     if len(entities) < MIN_BIS_ENTITIES:
         logger.critical(
@@ -227,3 +242,6 @@ def main() -> None:
 if __name__ == "__main__":
     main()
     sys.exit(0)
+
+# Register connector for shared ingestion runner (e.g. run_all_ingestion).
+source_connectors.register_connector("BIS Entity List", main)

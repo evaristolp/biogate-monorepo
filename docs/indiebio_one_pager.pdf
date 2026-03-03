@@ -1,0 +1,148 @@
+## BioGate – IndieBio One-Pager
+
+### Company
+
+**Name:** BioGate  
+**Sector:** Life-science tools / compliance infrastructure / AI  
+**Stage:** Pre-seed, working product with backend + tests  
+**Location:** [City, State] (student founder)
+
+---
+
+### Problem
+
+Biotechs, CROs, and diagnostics labs are under increasing pressure from:
+
+- The BIOSECURE Act.
+- BIS Entity List, OFAC sanctions.
+- UFLPA and other supply-chain regulations.
+
+They must know **who** their vendors are and **how risky** they are, but today:
+
+- Vendor lists live in procurement and ERP exports (CSVs, spreadsheets).
+- Compliance teams manually search government sites for each vendor.
+- Parent companies, aliases, and cross-border connections are hard to track.
+
+This creates:
+
+- Weeks of work per audit.
+- High risk of missing sanctioned or high-risk entities.
+- Friction with regulators, customers, and partners.
+
+---
+
+### Solution
+
+BioGate is an AI-powered vendor risk platform that:
+
+1. **Ingests vendor lists**: CSV upload or API call (`/audits/upload`).
+2. **Normalizes identities** with Anthropic Claude:
+   - Canonical vendor names.
+   - Country hints.
+   - Parent-company hints.
+   - Equipment-type hints.
+3. **Screens vendors and parents** against BIS/OFAC/UFLPA and other watchlists stored in Supabase.
+4. **Runs fuzzy matching** (Rapidfuzz) to capture near-matches and aliases.
+5. **Computes risk tiers**:
+   - Red / Amber / Yellow / Green based on effective_score.
+   - Parent-company expansion: if the parent’s match is more concerning, it drives the risk.
+6. **Outputs an audit**:
+   - Per-vendor risk tier and effective_score.
+   - Match evidence and parent_match_evidence.
+   - Summary counts per risk tier.
+
+This is built to plug into existing procurement and compliance workflows without requiring changes to ERPs or LIMS.
+
+---
+
+### Technology
+
+- **Backend:** Supabase (Postgres + auth) for:
+  - `audits` and `vendors` tables.
+  - `watchlist_entities` table with BIS data; pattern to add OFAC/UFLPA.
+- **Ingestion & API:**
+  - Python scripts to fetch BIS lists and transform them into structured data.
+  - FastAPI backend with `/audits/upload` for CSVs.
+- **Matching:**
+  - Rapidfuzz token_sort_ratio-based matching against names and aliases.
+- **LLM Integration (Anthropic Claude):**
+  - `normalize_vendors()` batches raw vendor names and returns:
+    - normalized_name
+    - country_hint
+    - parent_company_hint
+    - equipment_type_hint
+- **Risk Engine:**
+  - Effective_score derived from vendor and parent matches.
+  - Thresholds:
+    - Red ≥ 80 (confirmed match).
+    - Amber ≥ 65.
+    - Yellow ≥ 50.
+    - Green < 50.
+
+---
+
+### Traction (Week 3)
+
+- Working Supabase instance with:
+  - BIS ingestion script and stored watchlist_entities.
+  - `audits` and `vendors` tables with risk fields and evidence.
+- Full CSV→audit pipeline implemented and tested:
+  - `/audits/upload` validates and stores audits + vendors.
+  - Fuzzy matching & parent expansion integrated.
+  - Claude-based normalization integrated as a batch step.
+- Integration tests:
+  - `tests/test_integration.py` loads a 10-vendor fixture and asserts risk tiers (with one xfail around an over-sensitive match to be tuned in a later composite engine).
+
+---
+
+### Market
+
+- Initial wedge:
+  - US biotech startups, CROs, and diagnostic labs who need to demonstrate vendor compliance to:
+    - Regulators (BIOSECURE/BIS/OFAC/UFLPA).
+    - Pharma partners.
+    - Enterprise customers.
+- Direct customer archetype:
+  - Head of Compliance / GC / COO in a growing biotech.
+  - Pain: “We have to manually vet every vendor, and we don’t trust that we’re catching everything.”
+- Expansion:
+  - Later-stage biotechs, pharma, medtech.
+  - Adjacent deep-tech supply chains (AI hardware, semiconductors).
+
+---
+
+### Team
+
+- Student founder at [your university], focused on:
+  - Regulatory bottlenecks for biotech and life sciences.
+  - Building production-grade backend infra quickly (Supabase, FastAPI, LLMs).
+- Evidence:
+  - Shipped ingestion, pipeline, and tests in a few weeks.
+  - Good balance of pragmatism (CSV-first workflow) and ambition (composite risk engine).
+
+---
+
+### Why IndieBio
+
+- IndieBio is the top program where:
+  - Biotech founders push into manufacturing, clinical trials, and complex partnerships.
+  - Those founders will increasingly be asked “are your vendors safe and compliant?”
+- BioGate can:
+  - Help IndieBio companies proactively manage supply-chain and sanctions risk.
+  - Provide a standardized and auditable process they can show to boards and partners.
+- IndieBio can:
+  - Pressure-test BioGate on live portfolios.
+  - Introduce BioGate to initial design partners and follow-on capital.
+
+---
+
+### What We’re Looking For
+
+- $250k+ pre-seed with IndieBio / SOSV to:
+  - Extend watchlist coverage.
+  - Build composite risk models combining:
+    - Watchlists,
+    - Corporate structures,
+    - Geo / product risk.
+  - Run structured pilots with 3–5 IndieBio portfolio companies.
+

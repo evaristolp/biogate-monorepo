@@ -20,6 +20,17 @@ jobs:
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
+      - name: Check Supabase secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Supabase secrets are not set. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "Supabase secrets are configured."
+
       - name: Run all ingestion scripts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "schema_version": "1.0",
+  "title": "BioGate Risk Report",
+  "type": "object",
+  "required": ["report_metadata", "watchlist_metadata", "summary", "vendors", "disclaimers"],
+  "properties": {
+    "report_metadata": {
+      "type": "object",
+      "required": ["report_id", "audit_id", "organization_id", "organization_name", "generated_at", "pipeline_version", "scoring_config_version"],
+      "properties": {
+        "report_id": { "type": "string", "format": "uuid" },
+        "audit_id": { "type": "string", "format": "uuid" },
+        "organization_id": { "type": "string", "format": "uuid" },
+        "organization_name": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "pipeline_version": { "type": "string" },
+        "scoring_config_version": { "type": "string" }
+      }
+    },
+    "watchlist_metadata": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_list", "snapshot_date", "record_count"],
+        "properties": {
+          "source_list": { "type": "string" },
+          "snapshot_date": { "type": "string" },
+          "record_count": { "type": "integer" },
+          "file_hash": { "type": "string" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_vendors", "vendors_by_tier", "overall_risk_assessment", "flagged_vendor_count"],
+      "properties": {
+        "total_vendors": { "type": "integer" },
+        "vendors_by_tier": {
+          "type": "object",
+          "required": ["red", "amber", "yellow", "green"],
+          "properties": {
+            "red": { "type": "integer" },
+            "amber": { "type": "integer" },
+            "yellow": { "type": "integer" },
+            "green": { "type": "integer" }
+          }
+        },
+        "overall_risk_assessment": { "type": "string" },
+        "flagged_vendor_count": { "type": "integer" }
+      }
+    },
+    "vendors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["vendor_id", "raw_input_name", "risk_tier", "effective_tier"],
+        "properties": {
+          "vendor_id": { "type": "string", "format": "uuid" },
+          "raw_input_name": { "type": "string" },
+          "normalized_name": { "type": ["string", "null"] },
+          "country": { "type": ["string", "null"] },
+          "parent_company": { "type": ["string", "null"] },
+          "equipment_type": { "type": ["string", "null"] },
+          "risk_tier": { "type": "string", "enum": ["red", "amber", "yellow", "green"] },
+          "effective_tier": { "type": "string", "enum": ["red", "amber", "yellow", "green"] },
+          "match_evidence": { "type": "array" },
+          "override_history": { "type": "array" },
+          "recommendations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "disclaimers": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
