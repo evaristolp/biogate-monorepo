@@ -58,6 +58,8 @@ def run_audit_pipeline(
     """
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         raise RuntimeError("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env")
+    if not SUPABASE_URL.startswith("https://"):
+        raise RuntimeError(f"SUPABASE_URL must use https://, got: {SUPABASE_URL!r}")
 
     now = datetime.now(timezone.utc).isoformat()
 
@@ -122,98 +124,117 @@ def run_audit_pipeline(
     vendor_updates: list[dict[str, Any]] = []
     for i, v in enumerate(vendors_data):
         raw_name = vendor_rows[i]["raw_input_name"]
-        claude = claude_by_raw.get(raw_name) or {}
-        normalized_name = (claude.get("normalized_name") or "").strip() or normalize_vendor_name(raw_name)
-        parent_company_hint = (claude.get("parent_company_hint") or "").strip() or None
-        country_hint = (claude.get("country_hint") or "").strip() or None
-        equipment_type_hint = (claude.get("equipment_type_hint") or "").strip() or None
-
-        match_name = normalized_name or raw_name
-        # 1. Hardcoded BIOSECURE bypass: if raw or normalized contains named entity → RED, skip fuzzy
-        if is_biosecure_direct_match(raw_name) or is_biosecure_direct_match(normalized_name or ""):
-            matches = [{
-                "matched_name": raw_name or normalized_name,
-                "score": 100,
-                "source_list": "BIOSECURE_NAMED",
-                "country": None,
-                "match_type": "name",
-            }]
-            logger.info("BIOSECURE direct match for %r -> RED (bypass fuzzy)", match_name)
-        else:
-            # 2. Pre-fuzzy: match on root entity name (strip corporate suffixes to reduce false positives)
-            query_name = strip_corporate_suffixes(match_name) or match_name
-            exact = exact_match_vendor(query_name)
-            if exact:
-                matches = [dict(exact)]
-                logger.info("Exact match for %r -> %s (RED)", query_name, exact["matched_name"])
-            else:
-                matches = match_vendor(query_name, threshold=60, top_n=5)
-        logger.info(
-            "match_vendor(%r) -> %s",
-            match_name,
-            [(m["matched_name"], m["score"], m.get("source_list")) for m in matches] if matches else "[]",
-        )
-        fuzzy_score = matches[0]["score"] if matches else 0
-        match_evidence_raw = [dict(m) for m in matches] if matches else []
-
-        risk_source: str | None = None
-        parent_match_evidence: dict[str, Any] | None = None
-        parent_chain: list[dict[str, Any]] = []
-
-        # Resolve parent chain from graph (vendor name and parent_company_hint)
-        for name in [match_name, parent_company_hint]:
-            if not name:
-                continue
-            chain = resolve_parent_chain(name, max_depth=2)
-            if len(chain) > len(parent_chain):
-                parent_chain = chain
-        if parent_company_hint:
-            parent_query = strip_corporate_suffixes(parent_company_hint) or parent_company_hint
-            parent_matches = match_vendor(parent_query, threshold=60, top_n=5)
-            if parent_matches:
-                parent_score = parent_matches[0]["score"]
-                if parent_score > fuzzy_score:
-                    risk_source = "parent_company"
-                    parent_match_evidence = dict(parent_matches[0])
-                    logger.info(
-                        "parent_company overrides: %r -> %s (parent score %s > vendor %s)",
-                        parent_company_hint,
-                        parent_match_evidence.get("matched_name"),
-                        parent_score,
-                        fuzzy_score,
-                    )
-
-        # Risk scoring engine: tier, confidence, reasoning from config + graph
         try:
-            risk_result = score_vendor(
-                match_evidence_raw,
-                country=country_hint or vendor_rows[i].get("country"),
-                parent_chain=parent_chain if parent_chain else None,
-                parent_company_is_biosecure_named=bool(
-                    parent_company_hint and is_biosecure_direct_match(parent_company_hint)
-                ),
-                semantic_score=None,
-                vendor_name=match_name,
-            )
+            claude = claude_by_raw.get(raw_name) or {}
+            normalized_name = (claude.get("normalized_name") or "").strip() or normalize_vendor_name(raw_name)
+            parent_company_hint = (claude.get("parent_company_hint") or "").strip() or None
+            country_hint = (claude.get("country_hint") or "").strip() or None
+            equipment_type_hint = (claude.get("equipment_type_hint") or "").strip() or None
+
+            match_name = normalized_name or raw_name
+            # 1. Hardcoded BIOSECURE bypass: if raw or normalized contains named entity → RED, skip fuzzy
+            if is_biosecure_direct_match(raw_name) or is_biosecure_direct_match(normalized_name or ""):
+                matches = [{
+                    "matched_name": raw_name or normalized_name,
+                    "score": 100,
+                    "source_list": "BIOSECURE_NAMED",
+                    "country": None,
+                    "match_type": "name",
+                }]
+                logger.info("BIOSECURE direct match for vendor_index=%d (bypass fuzzy)", i)
+            else:
+                # 2. Pre-fuzzy: match on root entity name (strip corporate suffixes to reduce false positives)
+                query_name = strip_corporate_suffixes(match_name) or match_name
+                exact = exact_match_vendor(query_name)
+                if exact:
+                    matches = [dict(exact)]
+                    logger.info("Exact watchlist match for vendor_index=%d (RED)", i)
+                else:
+                    matches = match_vendor(query_name, threshold=60, top_n=5)
+            if matches:
+                logger.info(
+                    "Fuzzy match completed for vendor_index=%d, top_score=%s, candidates=%d",
+                    i,
+                    matches[0]["score"],
+                    len(matches),
+                )
+            else:
+                logger.info("No fuzzy matches for vendor_index=%d", i)
+            fuzzy_score = matches[0]["score"] if matches else 0
+            match_evidence_raw = [dict(m) for m in matches] if matches else []
+
+            risk_source: str | None = None
+            parent_match_evidence: dict[str, Any] | None = None
+            parent_chain: list[dict[str, Any]] = []
+
+            # Resolve parent chain from graph (vendor name and parent_company_hint)
+            for name in [match_name, parent_company_hint]:
+                if not name:
+                    continue
+                chain = resolve_parent_chain(name, max_depth=2)
+                if len(chain) > len(parent_chain):
+                    parent_chain = chain
+            if parent_company_hint:
+                parent_query = strip_corporate_suffixes(parent_company_hint) or parent_company_hint
+                parent_matches = match_vendor(parent_query, threshold=60, top_n=5)
+                if parent_matches:
+                    parent_score = parent_matches[0]["score"]
+                    if parent_score > fuzzy_score:
+                        risk_source = "parent_company"
+                        parent_match_evidence = dict(parent_matches[0])
+                        logger.info(
+                            "Parent company override applied for vendor_index=%d",
+                            i,
+                        )
+
+            # Risk scoring engine: tier, confidence, reasoning from config + graph
+            try:
+                risk_result = score_vendor(
+                    match_evidence_raw,
+                    country=country_hint or vendor_rows[i].get("country"),
+                    parent_chain=parent_chain if parent_chain else None,
+                    parent_company_is_biosecure_named=bool(
+                        parent_company_hint and is_biosecure_direct_match(parent_company_hint)
+                    ),
+                    semantic_score=None,
+                    vendor_name=match_name,
+                )
+            except Exception as e:
+                logger.exception(
+                    "Risk scoring failed for vendor_index=%d, defaulting to yellow: %s",
+                    i,
+                    e,
+                    exc_info=True,
+                )
+                risk_result = None
+
+            if risk_result is not None:
+                tier = risk_result.tier
+                effective_score = risk_result.confidence_score
+                match_evidence = [m.model_dump() for m in risk_result.match_evidence]
+                risk_reasoning = risk_result.reasoning
+            else:
+                tier = "yellow"
+                effective_score = int(round(fuzzy_score))
+                match_evidence = match_evidence_raw
+                risk_reasoning = "Scoring failed; conservative default tier applied."
         except Exception as e:
             logger.exception(
-                "Risk scoring failed for vendor %r, defaulting to yellow: %s",
-                raw_name,
+                "Vendor processing failed for vendor_index=%d, defaulting to yellow: %s",
+                i,
                 e,
                 exc_info=True,
             )
-            risk_result = None
-
-        if risk_result is not None:
-            tier = risk_result.tier
-            effective_score = risk_result.confidence_score
-            match_evidence = [m.model_dump() for m in risk_result.match_evidence]
-            risk_reasoning = risk_result.reasoning
-        else:
             tier = "yellow"
-            effective_score = int(round(fuzzy_score))
-            match_evidence = match_evidence_raw
-            risk_reasoning = "Scoring failed; conservative default tier applied."
+            effective_score = 0
+            match_evidence = []
+            risk_reasoning = "End-to-end vendor processing failed; conservative default tier applied."
+            country_hint = vendor_rows[i].get("country")
+            parent_company_hint = None
+            equipment_type_hint = None
+            risk_source = None
+            parent_match_evidence = None
+            parent_chain = []
 
         risk_summary[tier] += 1
 
@@ -249,22 +270,40 @@ def run_audit_pipeline(
         "completed_at": now,
     }).eq("id", audit_id).execute()
 
-    # 6. Generate and store JSON risk report
+    # 6. Generate and store JSON risk report (with audit versioning)
     try:
         from backend.report import generate_risk_report
         from backend.config.scoring_config import get_scoring_config
         report = generate_risk_report(str(audit_id), supabase_client)
         config = get_scoring_config()
+
+        # Compute next version number for this audit so history is preserved.
+        try:
+            existing = (
+                supabase_client.table("audit_reports")
+                .select("version")
+                .eq("audit_id", audit_id)
+                .order("version", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if existing.data:
+                latest_version = existing.data[0].get("version") or 0
+                next_version = int(latest_version) + 1
+            else:
+                next_version = 1
+        except Exception as e:
+            logger.warning("Could not determine existing audit report versions, defaulting to 1: %s", e)
+            next_version = 1
+
         report_row = {
             "audit_id": audit_id,
             "report_json": report,
+            "version": next_version,
             "pipeline_version": "1.0",
             "scoring_config_version": config.version,
         }
-        supabase_client.table("audit_reports").upsert(
-            report_row,
-            on_conflict="audit_id",
-        ).execute()
+        supabase_client.table("audit_reports").insert(report_row).execute()
     except Exception as e:
         logger.warning("Failed to generate or store risk report: %s", e)
 
@@ -279,4 +318,5 @@ def run_audit_pipeline(
         "vendor_count": len(vendors_final),
         "risk_summary": risk_summary,
         "vendors": vendors_final,
+        "report": report if "report" in locals() else None,
     }

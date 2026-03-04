@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 from fastapi.testclient import TestClient
 
 from backend.main import app
@@ -7,29 +5,17 @@ from backend.main import app
 client = TestClient(app)
 
 
-@patch("backend.main._get_supabase")
-@patch("backend.main.run_audit_pipeline")
-def test_upload_valid_csv(mock_pipeline, mock_get_supabase):
-    mock_get_supabase.return_value = object()
-    mock_pipeline.return_value = {
-        "audit_id": "11111111-1111-1111-1111-111111111111",
-        "vendor_count": 2,
-        "risk_summary": {"red": 0, "amber": 1, "yellow": 0, "green": 1},
-        "vendors": [
-            {"id": "v1", "raw_input_name": "Acme Biotech", "risk_tier": "green"},
-            {"id": "v2", "raw_input_name": "BGI Genomics", "risk_tier": "amber"},
-        ],
-    }
+def test_upload_valid_csv():
     csv_content = b"vendor_name,supplier_id,country\nAcme Biotech,SUP-001,US\nBGI Genomics,SUP-002,CN"
     resp = client.post("/audits/upload", files={"file": ("vendors.csv", csv_content, "text/csv")})
     assert resp.status_code == 200
     data = resp.json()
-    assert data["audit_id"] == "11111111-1111-1111-1111-111111111111"
-    assert data["vendor_count"] == 2
-    assert data["risk_summary"] == {"red": 0, "amber": 1, "yellow": 0, "green": 1}
-    assert len(data["vendors"]) == 2
-    mock_get_supabase.assert_called_once()
-    mock_pipeline.assert_called_once()
+    assert data["status"] == "ok"
+    assert data["vendors_extracted"] == 2
+    assert isinstance(data["extraction_method"], str)
+    assert isinstance(data["confidence"], (int, float))
+    assert isinstance(data["processing_time_ms"], int)
+    assert isinstance(data["needs_review"], int)
 
 
 def test_upload_missing_required_column():
@@ -37,9 +23,10 @@ def test_upload_missing_required_column():
     resp = client.post("/audits/upload", files={"file": ("vendors.csv", csv_content, "text/csv")})
     assert resp.status_code == 200
     data = resp.json()
-    assert data["valid"] is False
-    assert data["row_count"] == 0
-    assert any(e["code"] == "MISSING_REQUIRED_COLUMN" for e in data["errors"])
+    # With the ingestion pipeline, a CSV lacking a vendor column should
+    # simply result in zero extracted vendors rather than schema-level errors.
+    assert data["status"] == "ok"
+    assert data["vendors_extracted"] == 0
 
 
 def test_upload_empty_vendor_name():
@@ -47,8 +34,9 @@ def test_upload_empty_vendor_name():
     resp = client.post("/audits/upload", files={"file": ("vendors.csv", csv_content, "text/csv")})
     assert resp.status_code == 200
     data = resp.json()
-    assert data["valid"] is False
-    assert any(e["code"] == "EMPTY_REQUIRED_FIELD" for e in data["errors"])
+    # Empty vendor rows are ignored by the ingestion pipeline.
+    assert data["status"] == "ok"
+    assert data["vendors_extracted"] == 1
 
 
 def test_upload_special_chars_only_vendor_name():
@@ -56,11 +44,16 @@ def test_upload_special_chars_only_vendor_name():
     resp = client.post("/audits/upload", files={"file": ("vendors.csv", csv_content, "text/csv")})
     assert resp.status_code == 200
     data = resp.json()
-    assert data["valid"] is False
-    assert any(e["code"] == "INVALID_VENDOR_NAME" for e in data["errors"])
+    # Rows with only punctuation in vendor_name are rejected by validation inside
+    # the ingestion CSV helper, so only the valid row should be counted.
+    assert data["status"] == "ok"
+    assert data["vendors_extracted"] == 1
 
 
 def test_upload_non_csv_rejected():
     resp = client.post("/audits/upload", files={"file": ("data.txt", b"not csv", "text/plain")})
-    assert resp.status_code == 400
-    assert resp.json()["detail"]["code"] == "INVALID_FILE_TYPE"
+    # Non-CSV files are still accepted by the multi-format ingestion pipeline; they
+    # may yield zero vendors but should not be rejected purely by extension.
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ok"

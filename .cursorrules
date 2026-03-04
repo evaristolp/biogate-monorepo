@@ -1,0 +1,25 @@
+# BioGate Project Context
+# Drop this file in your repo root as .cursorrules
+
+## What BioGate Is
+AI-native BIOSECURE compliance platform. Automates supply chain auditing for biotech companies under the BIOSECURE Act (NDAA Section 851, signed Dec 2025).
+
+## Existing Codebase (Week 5 complete)
+- FastAPI backend with CSV upload endpoint
+- Supabase PostgreSQL: tables = organizations, audits, vendors, watchlist_entities, watchlist_snapshots
+- RapidFuzz fuzzy matching with configurable thresholds
+- Claude API vendor normalization (normalized_name, country_hint, parent_company_hint, equipment_type_hint)
+- Parent company resolution graph for BCC subsidiaries
+- GitHub Actions daily watchlist refresh
+- Manual override system with audit trail
+- CLI: python run_audit.py --input vendors.csv --output report.json
+- JSON risk report output
+
+## Key Files
+- backend/normalize.py — Claude API normalization (normalize_vendors_batch)
+- backend/matching.py — RapidFuzz matching engine
+- run_audit.py — CLI entry point
+- Watchlists: BIS Entity List, OFAC SDN, UFLPA (~22K entities, ~60K names)
+
+## Current Sprint: Multi-Format Document Ingestion
+Building a universal ingestion engine at backend/ingestion/ that accepts CSV, Excel, PDF, images, email, and Word docs. All handlers produce ExtractedVendor records that feed into the existing matching pipeline.

@@ -1,23 +1,53 @@
 """
-Helper script to run a single BioGate audit from a CSV file.
+CLI entrypoint for running the BioGate multi-format ingestion pipeline.
 
-Adds simple path validation and prints the current working directory so that
-file-not-found errors are easier to diagnose.
+Usage (preferred):
+    python scripts/run_audit.py --input vendors.csv --output extraction.json
 
-Usage:
-    python scripts/run_audit.py path/to/vendors.csv
+For backwards compatibility, a single positional argument still works:
+    python scripts/run_audit.py vendors.csv
 """
 
+import argparse
+import json
 import os
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run the BioGate ingestion pipeline on a document.")
+    parser.add_argument(
+        "--input",
+        "-i",
+        dest="input_path",
+        help="Path to input document (CSV, Excel, PDF, image, email, DOCX).",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        dest="output_path",
+        help="Path to write JSON extraction result (optional).",
+    )
+    parser.add_argument(
+        "positional_input",
+        nargs="?",
+        help="(Deprecated) Positional path to input document.",
+    )
+    return parser.parse_args(argv)
+
+
 def main() -> None:
-    if len(sys.argv) < 2:
-        print("Usage: python scripts/run_audit.py path/to/vendors.csv", file=sys.stderr)
+    args = _parse_args(sys.argv[1:])
+    input_arg = args.input_path or args.positional_input
+    if not input_arg:
+        print(
+            "Usage: python scripts/run_audit.py --input vendors.csv [--output extraction.json]",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Ensure repo root is on sys.path so `backend` imports work no matter
@@ -27,56 +57,53 @@ def main() -> None:
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 
-    csv_path_arg = sys.argv[1]
     cwd = os.getcwd()
     print(f"[run_audit] Current working directory: {cwd}")
-    print(f"[run_audit] Requested CSV path: {csv_path_arg}")
+    print(f"[run_audit] Requested input path: {input_arg}")
 
-    csv_path = Path(csv_path_arg)
-    if not csv_path.is_absolute():
-        csv_path = Path(cwd) / csv_path
+    input_path = Path(input_arg)
+    if not input_path.is_absolute():
+        input_path = Path(cwd) / input_path
 
-    if not csv_path.exists():
-        print(f"[run_audit] ERROR: CSV file not found at: {csv_path}", file=sys.stderr)
+    if not input_path.exists():
+        print(f"[run_audit] ERROR: Input file not found at: {input_path}", file=sys.stderr)
         sys.exit(2)
 
-    # Load env so backend.main/audit_pipeline can see SUPABASE_URL, etc.
+    # Load env so ingestion and normalization can see API keys, etc.
     load_dotenv(repo_root / ".env")
 
-    # Lazy imports so this script has minimal startup cost.
-    from backend.audits_schema import parse_validated_csv, validate_csv
-    from backend.audit_pipeline import run_audit_pipeline
-    from supabase import create_client
+    from backend.ingestion.pipeline import process_document
 
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-    if not supabase_url or not supabase_key:
-        print(
-            "[run_audit] ERROR: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env",
-            file=sys.stderr,
-        )
-        sys.exit(3)
+    result = process_document(str(input_path), audit_id="cli-run", org_id="cli-user")
 
-    client = create_client(supabase_url, supabase_key)
+    vendor_count = len(result.vendors)
+    extraction_method = (
+        result.extraction_method.value if hasattr(result.extraction_method, "value") else str(result.extraction_method)
+    )
+    avg_conf = result.extraction_confidence
+    processing_ms = result.processing_time_ms
 
-    content = csv_path.read_text(encoding="utf-8")
-    result = validate_csv(content)
-    if not result.valid:
-        print("[run_audit] CSV validation failed:")
-        for err in result.errors:
-            print(f"  - {err['code']}: {err['message']}")
-        sys.exit(4)
+    print("[run_audit] Ingestion completed.")
+    print(f"  Vendor count: {vendor_count}")
+    print(f"  Extraction method: {extraction_method}")
+    print(f"  Average confidence: {avg_conf:.3f}")
+    print(f"  Processing time (ms): {processing_ms}")
 
-    rows = parse_validated_csv(content)
-    print(f"[run_audit] Parsed {len(rows)} vendor rows from {csv_path}")
-
-    audit_result = run_audit_pipeline(rows, client)
-    print("[run_audit] Audit completed.")
-    print(f"  Audit ID: {audit_result.get('audit_id')}")
-    print(f"  Vendor count: {audit_result.get('vendor_count')}")
-    print(f"  Risk summary: {audit_result.get('risk_summary')}")
+    output_path = args.output_path
+    if output_path:
+        out_path = Path(output_path)
+        if not out_path.is_absolute():
+            out_path = Path(cwd) / out_path
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = asdict(result)
+        em = payload.get("extraction_method")
+        if em is not None:
+            payload["extraction_method"] = getattr(em, "value", str(em))
+        out_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+        print(f"[run_audit] Wrote JSON extraction result to: {out_path}")
 
 
 if __name__ == "__main__":
     main()
+
 

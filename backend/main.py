@@ -8,12 +8,8 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 
 from .auth import require_auth
-from .audits_schema import (
-    MAX_FILE_SIZE_BYTES,
-    parse_validated_csv,
-    validate_csv,
-)
-from .audit_pipeline import run_audit_pipeline
+from .audits_schema import MAX_FILE_SIZE_BYTES
+from backend.ingestion.pipeline import process_document
 from backend.overrides import apply_override, get_effective_tier
 from backend.report import generate_risk_report
 
@@ -66,14 +62,16 @@ def health_check():
 @app.post("/audits/upload")
 async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_auth)):
     """
-    Validate vendor audit CSV, persist to Supabase, run fuzzy matching, return full results.
-    Accepts multipart/form-data with 'file' field.
-    Returns audit_id, vendor_count, risk_summary, and vendors list with match_evidence.
+    Run the multi-format ingestion pipeline on an uploaded document.
+
+    Accepts multipart/form-data with 'file' field. The file may be CSV, Excel,
+    PDF, image, email, or DOCX. Returns high-level extraction metadata suitable
+    for front-end review workflows.
     """
-    if not file.filename or not file.filename.lower().endswith(".csv"):
+    if not file.filename:
         raise HTTPException(
             status_code=400,
-            detail={"code": "INVALID_FILE_TYPE", "message": "File must be a .csv"},
+            detail={"code": "INVALID_FILE", "message": "Uploaded file must have a filename"},
         )
 
     content = await file.read()
@@ -86,41 +84,41 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
             },
         )
 
+    suffix = "".join(Path(file.filename).suffixes) or ".dat"
+    tmp_path = _REPO_ROOT / "tmp" / f"upload-{os.getpid()}{suffix}"
+    tmp_path.parent.mkdir(parents=True, exist_ok=True)
+
     try:
-        text = content.decode("utf-8")
-    except UnicodeDecodeError as e:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": "INVALID_ENCODING",
-                "message": f"File must be UTF-8 encoded: {e!s}",
-            },
-        ) from e
+        tmp_path.write_bytes(content)
 
-    result = validate_csv(text)
-    if not result.valid:
-        return result.to_response()
+        # For now we use simple placeholders; these identifiers are primarily
+        # for logging / observability within the ingestion pipeline.
+        audit_id = "api-upload"
+        org_id = "api-user"
 
-    rows = parse_validated_csv(text)
-    if not rows:
+        result = process_document(str(tmp_path), audit_id=audit_id, org_id=org_id)
+
+        needs_review_count = sum(1 for v in result.vendors if v.needs_review)
+
         return {
-            "valid": False,
-            "row_count": 0,
-            "errors": [{"code": "NO_VALID_ROWS", "message": "No vendor rows to process"}],
+            "status": "ok",
+            "vendors_extracted": len(result.vendors),
+            "extraction_method": (
+                result.extraction_method.value
+                if hasattr(result.extraction_method, "value")
+                else str(result.extraction_method)
+            ),
+            "confidence": result.extraction_confidence,
+            "processing_time_ms": result.processing_time_ms,
+            "needs_review": needs_review_count,
         }
-
-    try:
-        supabase = _get_supabase()
-    except HTTPException:
-        raise
-
-    try:
-        return run_audit_pipeline(rows, supabase)
-    except RuntimeError as e:
-        raise HTTPException(
-            status_code=500,
-            detail={"code": "PIPELINE_ERROR", "message": str(e)},
-        ) from e
+    finally:
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except Exception:
+            # Best-effort cleanup; do not fail the request if deletion fails.
+            pass
 
 
 class OverrideBody(BaseModel):
