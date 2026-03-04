@@ -9,7 +9,7 @@ from supabase import create_client
 
 from .auth import require_auth
 from .audits_schema import MAX_FILE_SIZE_BYTES
-from backend.ingestion.pipeline import process_document
+from backend.ingestion.orchestrator import run_document_audit
 from backend.overrides import apply_override, get_effective_tier
 from backend.report import generate_risk_report
 
@@ -96,6 +96,8 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
         audit_id = "api-upload"
         org_id = "api-user"
 
+        from backend.ingestion.pipeline import process_document
+
         result = process_document(str(tmp_path), audit_id=audit_id, org_id=org_id)
 
         needs_review_count = sum(1 for v in result.vendors if v.needs_review)
@@ -114,6 +116,98 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
             "processing_time_ms": result.processing_time_ms,
             "needs_review": needs_review_count,
         }
+    finally:
+        try:
+            if tmp_path.exists():
+                tmp_path.unlink()
+        except Exception:
+            # Best-effort cleanup; do not fail the request if deletion fails.
+            pass
+
+
+@app.post("/audits/upload_and_audit")
+async def audits_upload_and_audit(file: UploadFile = File(...), _: None = Depends(require_auth)):
+    """
+    Run a full audit using the multi-format ingestion pipeline.
+
+    Accepts multipart/form-data with 'file' field. The file may be CSV, Excel,
+    or text-based PDF (additional formats are experimental). Extracted vendors
+    are fed into the existing audit pipeline so the response shape matches the
+    CSV-based flow (`audit_id`, `risk_summary`, `vendors`, `report`), with an
+    additional `ingestion` block that surfaces extraction metadata.
+    """
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_FILE", "message": "Uploaded file must have a filename"},
+        )
+
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "FILE_TOO_LARGE",
+                "message": f"File exceeds {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB limit",
+            },
+        )
+
+    suffix = "".join(Path(file.filename).suffixes) or ".dat"
+    tmp_path = _REPO_ROOT / "tmp" / f"upload-{os.getpid()}{suffix}"
+    tmp_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        tmp_path.write_bytes(content)
+
+        try:
+            supabase = _get_supabase()
+        except HTTPException:
+            raise
+
+        audit_result, extraction_result = run_document_audit(
+            str(tmp_path),
+            supabase,
+            audit_id_hint="api-upload",
+            org_id_hint="api-user",
+        )
+
+        if audit_result is None:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "INGESTION_FAILED",
+                    "message": "No valid vendor rows could be extracted from the document.",
+                    "ingestion": {
+                        "vendors_extracted": len(extraction_result.vendors),
+                        "errors": extraction_result.errors,
+                        "warnings": extraction_result.warnings,
+                        "extraction_method": (
+                            extraction_result.extraction_method.value
+                            if hasattr(extraction_result.extraction_method, "value")
+                            else str(extraction_result.extraction_method)
+                        ),
+                        "confidence": extraction_result.extraction_confidence,
+                        "processing_time_ms": extraction_result.processing_time_ms,
+                    },
+                },
+            )
+
+        needs_review_count = sum(1 for v in extraction_result.vendors if v.needs_review)
+        audit_payload = dict(audit_result)
+        audit_payload["ingestion"] = {
+            "vendors_extracted": len(extraction_result.vendors),
+            "errors": extraction_result.errors,
+            "warnings": extraction_result.warnings,
+            "extraction_method": (
+                extraction_result.extraction_method.value
+                if hasattr(extraction_result.extraction_method, "value")
+                else str(extraction_result.extraction_method)
+            ),
+            "confidence": extraction_result.extraction_confidence,
+            "processing_time_ms": extraction_result.processing_time_ms,
+            "needs_review": needs_review_count,
+        }
+        return audit_payload
     finally:
         try:
             if tmp_path.exists():

@@ -16,6 +16,8 @@ from backend.ingestion.router import detect_handler, is_pdf_text_extractable
 from backend.ingestion.handlers.excel import extract_from_excel
 from backend.ingestion.handlers.pdf_text import extract_from_pdf_text
 from backend.ingestion.handlers.vision import extract_from_vision
+from backend.ingestion.handlers.email import extract_from_email
+from backend.ingestion.handlers.docx import extract_from_docx
 from backend.audits_schema import parse_validated_csv, validate_csv
 
 logger = logging.getLogger(__name__)
@@ -187,11 +189,9 @@ def process_document(file_path: str, audit_id: str, org_id: str) -> ExtractionRe
     elif handler_name == "image_vision_parser":
         result = extract_from_vision(file_path, is_pdf=False)
     elif handler_name == "email_parser":
-        result = ExtractionResult(extraction_method=ExtractionMethod.EMAIL_PARSER)
-        result.warnings.append("Email parser not yet implemented; no vendors extracted.")
+        result = extract_from_email(file_path)
     elif handler_name == "docx_parser":
-        result = ExtractionResult(extraction_method=ExtractionMethod.DOCX_PARSER)
-        result.warnings.append("DOCX parser not yet implemented; no vendors extracted.")
+        result = extract_from_docx(file_path)
     else:
         result = ExtractionResult()
         result.warnings.append(f"No ingestion handler registered for MIME type {mime_type!r}")

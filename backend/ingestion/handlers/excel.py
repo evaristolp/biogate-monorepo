@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
-from openpyxl import load_workbook
-from openpyxl.worksheet.worksheet import Worksheet
+# NOTE:
+# We intentionally avoid importing openpyxl (and therefore numpy) at module
+# import time. In some environments a broken numpy/Accelerate stack can
+# segfault during import, which would take down pytest collection and any
+# code path that merely imports this module. Instead we import openpyxl
+# lazily inside extract_from_excel() the first time it's actually used.
+if TYPE_CHECKING:  # pragma: no cover - import only for type checking
+    from openpyxl.worksheet.worksheet import Worksheet
 
 from backend.ingestion.base import (
     ExtractionMethod,
@@ -144,7 +150,7 @@ def extract_vendor_from_row(
     )
 
 
-def _extract_from_sheet(sheet: Worksheet) -> List[ExtractedVendor]:
+def _extract_from_sheet(sheet: "Worksheet") -> List[ExtractedVendor]:
     rows = list(sheet.iter_rows(values_only=False))
     if not rows:
         return []
@@ -175,6 +181,12 @@ def extract_from_excel(file_path: str) -> ExtractionResult:
     Extract vendor records from an Excel (.xlsx) file.
     """
     result = ExtractionResult(extraction_method=ExtractionMethod.EXCEL_PARSER)
+
+    try:
+        from openpyxl import load_workbook
+    except Exception as exc:  # pragma: no cover - defensive
+        result.errors.append(f"openpyxl is not available: {exc}")
+        return result
 
     try:
         wb = load_workbook(filename=file_path, data_only=True)

@@ -124,6 +124,16 @@ def run_audit_pipeline(
     vendor_updates: list[dict[str, Any]] = []
     for i, v in enumerate(vendors_data):
         raw_name = vendor_rows[i]["raw_input_name"]
+        # Initialize fields with safe defaults so that the exception handler
+        # can still build a complete update payload without UnboundLocalError.
+        normalized_name = normalize_vendor_name(raw_name)
+        parent_company_hint: str | None = None
+        country_hint: str | None = vendor_rows[i].get("country")
+        equipment_type_hint: str | None = None
+        risk_source: str | None = None
+        parent_match_evidence: dict[str, Any] | None = None
+        parent_chain: list[dict[str, Any]] = []
+
         try:
             claude = claude_by_raw.get(raw_name) or {}
             normalized_name = (claude.get("normalized_name") or "").strip() or normalize_vendor_name(raw_name)
@@ -162,10 +172,6 @@ def run_audit_pipeline(
                 logger.info("No fuzzy matches for vendor_index=%d", i)
             fuzzy_score = matches[0]["score"] if matches else 0
             match_evidence_raw = [dict(m) for m in matches] if matches else []
-
-            risk_source: str | None = None
-            parent_match_evidence: dict[str, Any] | None = None
-            parent_chain: list[dict[str, Any]] = []
 
             # Resolve parent chain from graph (vendor name and parent_company_hint)
             for name in [match_name, parent_company_hint]:
@@ -229,6 +235,9 @@ def run_audit_pipeline(
             effective_score = 0
             match_evidence = []
             risk_reasoning = "End-to-end vendor processing failed; conservative default tier applied."
+            # Restore conservative, non-null hints so downstream payload
+            # construction never fails even when early processing did.
+            normalized_name = normalize_vendor_name(raw_name)
             country_hint = vendor_rows[i].get("country")
             parent_company_hint = None
             equipment_type_hint = None

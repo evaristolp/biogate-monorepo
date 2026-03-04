@@ -53,8 +53,34 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
 7. **Submit a CSV**
    - CSV must include a `vendor_name` column; optional: `country`, `supplier_id`, etc.
    - Example: `tests/fixtures/test_10_vendors.csv`
-   - `curl -X POST -F "file=@tests/fixtures/test_10_vendors.csv" http://127.0.0.1:8000/audits/upload`
+   - `curl -X POST -F "file=@tests/fixtures/test_10_vendors.csv" http://127.0.0.1:8000/audits/upload_and_audit"`
    - Response includes `audit_id`, `risk_summary`, and `vendors` with `risk_tier` and `match_evidence`.
+
+## Multi-format ingestion
+
+- **Supported formats (v1)**: CSV, Excel (`.xlsx` / `.xls`), text-based PDF. Image, email, and DOCX ingestion are wired but vendor extraction is currently experimental (no automatic vendors returned yet).
+- **Ingestion-only API** (for preview / QA):
+  - `POST /audits/upload` with multipart `file` (CSV, Excel, PDF, image, email, DOCX).
+  - Returns extraction metadata only:
+    - `status`, `vendors_extracted`, `errors`, `warnings`, `extraction_method`, `confidence`, `processing_time_ms`, `needs_review`.
+- **Full audit API** (multi-format → Supabase audit pipeline):
+  - `POST /audits/upload_and_audit` with multipart `file` (CSV, Excel, text-based PDF).
+  - Runs the ingestion engine, then feeds extracted vendors into `run_audit_pipeline`.
+  - Response matches the CSV path plus an `ingestion` block:
+    - Top-level: `audit_id`, `vendor_count`, `risk_summary`, `vendors`, `report`.
+    - `ingestion`: `vendors_extracted`, `errors`, `warnings`, `extraction_method`, `confidence`, `processing_time_ms`, `needs_review`.
+
+### CLI examples
+
+- **Ingestion-only (debugging vendor extraction)**:
+
+  ```bash
+  python scripts/run_audit.py --input path/to/vendors.xlsx --output extraction.json
+  ```
+
+- **End-to-end document audit (multi-format → Supabase)**:
+
+  A dedicated CLI wrapper can be added to call `backend.ingestion.orchestrator.run_document_audit` with your Supabase credentials; for now, use the FastAPI endpoint `POST /audits/upload_and_audit` as shown above.
 
 ## Tests
 
