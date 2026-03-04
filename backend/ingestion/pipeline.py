@@ -104,12 +104,21 @@ def _csv_to_extraction_result(file_path: str) -> ExtractionResult:
         return result
 
     validation = validate_csv(content)
-    if not validation.valid:
+    if validation.errors:
+        # Surface row-level data quality problems even when the file is still ingestible.
         for err in validation.errors:
             result.errors.append(
                 f"{err.code}: {err.message}"
                 + (f" (row={err.row}, column={err.column})" if err.row or err.column else "")
             )
+
+        rows_with_issues = sorted({e.row for e in validation.errors if e.row is not None})
+        if rows_with_issues:
+            result.warnings.append(
+                f"CSV contains {len(rows_with_issues)} row(s) with validation issues; invalid rows may be skipped."
+            )
+
+    if not validation.valid:
         result.warnings.append("CSV validation failed; no vendors extracted.")
         return result
 

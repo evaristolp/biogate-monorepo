@@ -103,6 +103,8 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
         return {
             "status": "ok",
             "vendors_extracted": len(result.vendors),
+            "errors": result.errors,
+            "warnings": result.warnings,
             "extraction_method": (
                 result.extraction_method.value
                 if hasattr(result.extraction_method, "value")
