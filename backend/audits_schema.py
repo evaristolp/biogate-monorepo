@@ -129,8 +129,16 @@ def parse_validated_csv(content: str) -> list[dict[str, Any]]:
             if canonical in ALLOWED_COLUMNS:
                 val = (row.get(col_orig, "") or "").strip() or None
                 out[canonical] = val
-        if out.get("vendor_name"):
-            rows.append(out)
+
+        vendor_name = (out.get("vendor_name") or "").strip()
+        # Skip rows with empty vendor names or names that are only punctuation/whitespace.
+        if not vendor_name:
+            continue
+        if not any(c.isalnum() for c in vendor_name):
+            continue
+
+        out["vendor_name"] = vendor_name
+        rows.append(out)
     return rows
 
 
@@ -217,8 +225,14 @@ def validate_csv(content: str) -> ValidationResult:
                     )
                 )
 
+    # Row-level data quality issues (e.g. empty or punctuation-only vendor_name)
+    # should not prevent ingestion entirely; they are surfaced as errors but the
+    # file is still considered structurally valid so that good rows can be used.
+    fatal_codes = {"ROW_LIMIT_EXCEEDED"}
+    is_valid = not any(e.code in fatal_codes for e in errors)
+
     return ValidationResult(
-        valid=len(errors) == 0,
+        valid=is_valid,
         row_count=row_count,
         errors=errors,
     )
