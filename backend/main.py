@@ -8,7 +8,11 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from supabase import create_client
 
-from .auth import require_auth
+from .auth import (
+    require_auth,
+    require_free_credits_batch_audit,
+    require_free_credits_full_audit,
+)
 from .audits_schema import MAX_FILE_SIZE_BYTES
 from backend.ingestion.orchestrator import run_document_audit, run_document_audit_from_paths
 from backend.document_uploads import record_document_upload
@@ -159,7 +163,8 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
 @app.post("/audits/upload_and_audit_batch")
 async def audits_upload_and_audit_batch(
     files: list[UploadFile] = File(..., description="Multiple files (e.g. folder of CSVs, PDFs, images) for one audit"),
-    _: None = Depends(require_auth),
+    auth_ok: None = Depends(require_auth),
+    credits_ok: None = Depends(require_free_credits_batch_audit),
 ):
     """
     Run a single audit from multiple source files (folder / multi-source audit).
@@ -287,7 +292,11 @@ async def audits_upload_and_audit_batch(
 
 
 @app.post("/audits/upload_and_audit")
-async def audits_upload_and_audit(file: UploadFile = File(...), _: None = Depends(require_auth)):
+async def audits_upload_and_audit(
+    file: UploadFile = File(...),
+    auth_ok: None = Depends(require_auth),
+    credits_ok: None = Depends(require_free_credits_full_audit),
+):
     """
     Run a full audit using the multi-format ingestion pipeline.
 
