@@ -1,5 +1,6 @@
 import logging
 import os
+import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -9,7 +10,7 @@ from supabase import create_client
 
 from .auth import require_auth
 from .audits_schema import MAX_FILE_SIZE_BYTES
-from backend.ingestion.orchestrator import run_document_audit
+from backend.ingestion.orchestrator import run_document_audit, run_document_audit_from_paths
 from backend.overrides import apply_override, get_effective_tier
 from backend.report import generate_risk_report
 
@@ -123,6 +124,115 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
         except Exception:
             # Best-effort cleanup; do not fail the request if deletion fails.
             pass
+
+
+@app.post("/audits/upload_and_audit_batch")
+async def audits_upload_and_audit_batch(
+    files: list[UploadFile] = File(..., description="Multiple files (e.g. folder of CSVs, PDFs, images) for one audit"),
+    _: None = Depends(require_auth),
+):
+    """
+    Run a single audit from multiple source files (folder / multi-source audit).
+
+    Accepts multipart/form-data with 'files' field containing one or more files.
+    Each file can be CSV, Excel, PDF, image, email, or DOCX. All extracted
+    vendors are merged into one audit. Response shape matches upload_and_audit,
+    with ingestion errors/warnings prefixed by filename.
+    """
+    if not files:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "NO_FILES", "message": "At least one file is required. Use 'files' for multiple sources."},
+        )
+
+    for f in files:
+        if not f.filename or not f.filename.strip():
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "INVALID_FILE", "message": "Every uploaded file must have a filename"},
+            )
+
+    tmp_dir = None
+    paths: list[str] = []
+    try:
+        tmp_dir = tempfile.mkdtemp(prefix="biogate-batch-")
+        tmp_path = Path(tmp_dir)
+        for i, upload in enumerate(files):
+            content = await upload.read()
+            if len(content) > MAX_FILE_SIZE_BYTES:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "FILE_TOO_LARGE",
+                        "message": f"File {upload.filename} exceeds {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB limit",
+                    },
+                )
+            name = (Path(upload.filename).name or "").strip() or f"file_{i}.bin"
+            out_path = tmp_path / name
+            out_path.write_bytes(content)
+            paths.append(str(out_path))
+
+        try:
+            supabase = _get_supabase()
+        except HTTPException:
+            raise
+
+        audit_result, extraction_result = run_document_audit_from_paths(
+            paths,
+            supabase,
+            audit_id_hint="api-upload",
+            org_id_hint="api-user",
+        )
+
+        if audit_result is None:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "INGESTION_FAILED",
+                    "message": "No valid vendor rows could be extracted from the uploaded files.",
+                    "ingestion": {
+                        "vendors_extracted": len(extraction_result.vendors),
+                        "errors": extraction_result.errors,
+                        "warnings": extraction_result.warnings,
+                        "extraction_method": (
+                            extraction_result.extraction_method.value
+                            if hasattr(extraction_result.extraction_method, "value")
+                            else str(extraction_result.extraction_method)
+                        ),
+                        "confidence": extraction_result.extraction_confidence,
+                        "processing_time_ms": extraction_result.processing_time_ms,
+                    },
+                },
+            )
+
+        needs_review_count = sum(1 for v in extraction_result.vendors if v.needs_review)
+        audit_payload = dict(audit_result)
+        audit_payload["ingestion"] = {
+            "vendors_extracted": len(extraction_result.vendors),
+            "sources_processed": len(paths),
+            "errors": extraction_result.errors,
+            "warnings": extraction_result.warnings,
+            "extraction_method": (
+                extraction_result.extraction_method.value
+                if hasattr(extraction_result.extraction_method, "value")
+                else str(extraction_result.extraction_method)
+            ),
+            "confidence": extraction_result.extraction_confidence,
+            "processing_time_ms": extraction_result.processing_time_ms,
+            "needs_review": needs_review_count,
+        }
+        return audit_payload
+    finally:
+        if tmp_dir:
+            try:
+                for p in paths:
+                    try:
+                        Path(p).unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                Path(tmp_dir).rmdir()
+            except Exception:
+                pass
 
 
 @app.post("/audits/upload_and_audit")

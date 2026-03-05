@@ -13,6 +13,7 @@ class ExtractionMethod(str, Enum):
     IMAGE_VISION = "IMAGE_VISION"
     EMAIL_PARSER = "EMAIL_PARSER"
     DOCX_PARSER = "DOCX_PARSER"
+    MULTIPLE = "MULTIPLE"  # Multiple sources (folder/batch)
 
 
 @dataclass

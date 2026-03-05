@@ -69,6 +69,11 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
   - Response matches the CSV path plus an `ingestion` block:
     - Top-level: `audit_id`, `vendor_count`, `risk_summary`, `vendors`, `report`.
     - `ingestion`: `vendors_extracted`, `errors`, `warnings`, `extraction_method`, `confidence`, `processing_time_ms`, `needs_review`.
+- **Multi-source (folder) audit**: One audit from many files (e.g. a folder of CSVs, PDFs, receipts):
+  - `POST /audits/upload_and_audit_batch` with multipart `files` (one or more files).
+  - All extracted vendors are merged into a single audit; errors/warnings are prefixed by filename.
+  - Same response shape as `upload_and_audit`, with `ingestion.sources_processed` and `extraction_method: "MULTIPLE"`.
+  - Example: `curl -X POST -F "files=@vendors.csv" -F "files=@invoice.pdf" -F "files=@receipt.jpg" http://127.0.0.1:8000/audits/upload_and_audit_batch`
 
 ### CLI examples
 
