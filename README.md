@@ -97,6 +97,14 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
 - Optional env: `BIOGATE_BASE_URL` (default `http://localhost:8000`) for the verification URL embedded in the QR code.
 - The audit response includes `certificate_id` and `certificate_pdf_base64`; decode and save as PDF to open in Adobe Reader.
 
+### Email delivery (optional)
+
+- **Single-file and batch audit** endpoints accept an optional form field `email`. When set and SMTP is configured, the backend sends one email to that address with the risk summary and the Compliance Certificate PDF attached.
+- **Env vars** (all optional; if any are missing, email is skipped and no error is raised):
+  - `BIOGATE_EMAIL_FROM` — From address (e.g. `noreply@biogate.us`)
+  - `SMTP_HOST`, `SMTP_PORT` (default `587`), `SMTP_USER`, `SMTP_PASSWORD`
+- Example: `curl -X POST -F "file=@vendors.csv" -F "email=you@example.com" http://127.0.0.1:8000/audits/upload_and_audit`
+
 ## Tests
 
 - **Unit + integration (requires Supabase env)**  

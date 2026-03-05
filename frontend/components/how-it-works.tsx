@@ -26,7 +26,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section className="bg-background px-6 py-24">
+    <section id="how-it-works" className="bg-background px-6 py-24 scroll-mt-20">
       <div className="mx-auto max-w-5xl">
         <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           How it works
@@ -40,7 +40,7 @@ export function HowItWorks() {
           {steps.map((step) => (
             <div
               key={step.number}
-              className="group rounded-xl border border-border bg-card p-6 transition-colors hover:border-primary/30"
+              className="group rounded-xl border border-border bg-gradient-to-b from-card to-card p-6 transition-all hover:border-primary/30 hover:from-primary/5 hover:to-card"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">

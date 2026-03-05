@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from supabase import create_client
 
@@ -197,6 +197,7 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
 @app.post("/audits/upload_and_audit_batch")
 async def audits_upload_and_audit_batch(
     files: list[UploadFile] = File(..., description="Multiple files (e.g. folder of CSVs, PDFs, images) for one audit"),
+    email: str | None = Form(default=None, description="Optional: send report and certificate PDF to this address"),
     auth_ok: None = Depends(require_auth),
     credits_ok: None = Depends(require_free_credits_batch_audit),
 ):
@@ -315,6 +316,20 @@ async def audits_upload_and_audit_batch(
             "processing_time_ms": extraction_result.processing_time_ms,
             "needs_review": needs_review_count,
         }
+        if email and email.strip():
+            try:
+                from backend.email_sender import send_audit_report_email
+                send_audit_report_email(
+                    to_email=email.strip(),
+                    audit_id=audit_result["audit_id"],
+                    risk_summary=audit_result.get("risk_summary") or {},
+                    vendor_count=audit_result.get("vendor_count", 0),
+                    certificate_pdf_base64=audit_result.get("certificate_pdf_base64"),
+                    certificate_id=audit_result.get("certificate_id"),
+                    base_url=os.getenv("BIOGATE_BASE_URL", "http://localhost:8000"),
+                )
+            except Exception as e:
+                logging.getLogger(__name__).warning("Email delivery failed (batch): %s", e)
         return audit_payload
     finally:
         if tmp_dir:
@@ -332,6 +347,7 @@ async def audits_upload_and_audit_batch(
 @app.post("/audits/upload_and_audit")
 async def audits_upload_and_audit(
     file: UploadFile = File(...),
+    email: str | None = Form(default=None, description="Optional: send report and certificate PDF to this address"),
     auth_ok: None = Depends(require_auth),
     credits_ok: None = Depends(require_free_credits_full_audit),
 ):
@@ -427,6 +443,20 @@ async def audits_upload_and_audit(
             "processing_time_ms": extraction_result.processing_time_ms,
             "needs_review": needs_review_count,
         }
+        if email and email.strip():
+            try:
+                from backend.email_sender import send_audit_report_email
+                send_audit_report_email(
+                    to_email=email.strip(),
+                    audit_id=audit_result["audit_id"],
+                    risk_summary=audit_result.get("risk_summary") or {},
+                    vendor_count=audit_result.get("vendor_count", 0),
+                    certificate_pdf_base64=audit_result.get("certificate_pdf_base64"),
+                    certificate_id=audit_result.get("certificate_id"),
+                    base_url=os.getenv("BIOGATE_BASE_URL", "http://localhost:8000"),
+                )
+            except Exception as e:
+                logging.getLogger(__name__).warning("Email delivery failed: %s", e)
         return audit_payload
     finally:
         try:

@@ -2,22 +2,58 @@ import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { SecurityBanner } from "@/components/security-banner"
 import { HowItWorks } from "@/components/how-it-works"
-import { AuditUploader } from "@/components/audit-uploader"
+import { NetworkVisual } from "@/components/network-visual"
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      {/* --- Mesh gradient hero with network visual --- */}
+      <div className="relative min-h-dvh overflow-hidden bg-[#0c1222]">
+        {/* Layered radial blobs */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,#3b82f6_0%,transparent_50%)] opacity-60" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,#06b6d4_0%,transparent_45%)] opacity-50" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_60%_80%,#6366f1_0%,transparent_50%)] opacity-40" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_80%,#0ea5e9_0%,transparent_40%)] opacity-30" />
+        {/* Interactive network canvas */}
+        <NetworkVisual />
+        <div className="relative z-10 flex min-h-dvh flex-col justify-center">
+          <HeroSection />
+        </div>
+      </div>
       <main>
-        <HeroSection />
         <SecurityBanner />
         <HowItWorks />
-        <AuditUploader />
       </main>
-      <footer className="border-t border-border bg-background px-6 py-8">
-        <p className="text-center text-xs text-muted-foreground">
-          {"© 2026 BioGate, Inc."}
-        </p>
+      <footer className="bg-[#0c1222] px-8 pb-8 pt-16">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-2xl font-extrabold tracking-tight text-white">
+                biogate
+              </p>
+              <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/40">
+                Compliance infrastructure for the next generation of biotech.
+              </p>
+            </div>
+            <div className="flex gap-8 text-sm text-white/40">
+              <a href="#" className="transition-colors hover:text-white/70">
+                Privacy
+              </a>
+              <a href="#" className="transition-colors hover:text-white/70">
+                Terms
+              </a>
+              <a href="#" className="transition-colors hover:text-white/70">
+                Contact
+              </a>
+            </div>
+          </div>
+          <div className="mt-12 border-t border-white/10 pt-6">
+            <p className="text-xs text-white/25">
+              {"© 2026 BioGate, Inc. All rights reserved."}
+            </p>
+          </div>
+        </div>
       </footer>
     </div>
   )

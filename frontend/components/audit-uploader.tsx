@@ -55,9 +55,12 @@ function buildAuthHeaders(): HeadersInit {
   return headers
 }
 
-async function runFullAudit(file: File): Promise<AuditResponse> {
+async function runFullAudit(file: File, email?: string | null): Promise<AuditResponse> {
   const formData = new FormData()
   formData.append("file", file)
+  if (email && email.trim()) {
+    formData.append("email", email.trim())
+  }
 
   const res = await fetch(`${API_BASE_URL}/audits/upload_and_audit`, {
     method: "POST",
@@ -102,6 +105,7 @@ function getTierBadgeClasses(tier: string | null | undefined): string {
 
 export function AuditUploader() {
   const [file, setFile] = React.useState<File | null>(null)
+  const [email, setEmail] = React.useState<string>("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [result, setResult] = React.useState<AuditResponse | null>(null)
@@ -121,7 +125,7 @@ export function AuditUploader() {
     setError(null)
 
     try {
-      const data = await runFullAudit(file)
+      const data = await runFullAudit(file, email || undefined)
       setResult(data)
     } catch (err) {
       const message =
@@ -198,6 +202,14 @@ export function AuditUploader() {
                   setError(null)
                 }}
                 aria-label="Upload vendor list file"
+              />
+              <Input
+                type="email"
+                placeholder="Email report to (optional)"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                aria-label="Email address for report delivery"
+                className="max-w-xs"
               />
               <Button
                 type="submit"
