@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+import uuid
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -50,6 +51,36 @@ def _get_supabase():
             },
         )
     return create_client(url, key)
+
+
+def _is_permission_denied(err: BaseException) -> bool:
+    """True if the error is a Postgres/Supabase permission-denied on a table."""
+    parts = []
+    if getattr(err, "message", None):
+        parts.append(str(err.message).lower())
+    if getattr(err, "details", None):
+        parts.append(str(err.details).lower())
+    parts.append(str(err).lower())
+    if getattr(err, "args", ()):
+        parts.extend(str(a).lower() for a in err.args)
+    text = " ".join(parts)
+    return "permission denied" in text and "table" in text
+
+
+def _raise_config_error_if_permission_denied(err: BaseException) -> None:
+    """If err looks like a DB permission error, raise a 503 with deployment guidance."""
+    if _is_permission_denied(err):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "DB_PERMISSION_DENIED",
+                "message": (
+                    "Permission denied for a database table. The backend must use the Supabase "
+                    "service role key (not the anon key). In Supabase: Project Settings → API → "
+                    "use the secret 'service_role' key for SUPABASE_SERVICE_ROLE_KEY."
+                ),
+            },
+        ) from err
 
 
 @app.get("/health")
@@ -108,7 +139,7 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
         )
 
     suffix = "".join(Path(file.filename).suffixes) or ".dat"
-    tmp_path = _REPO_ROOT / "tmp" / f"upload-{os.getpid()}{suffix}"
+    tmp_path = _REPO_ROOT / "tmp" / f"upload-{uuid.uuid4().hex}{suffix}"
     tmp_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -136,6 +167,9 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
             )
         except HTTPException:
             pass
+        except Exception as e:
+            _raise_config_error_if_permission_denied(e)
+            raise
 
         return {
             "status": "ok",
@@ -225,12 +259,16 @@ async def audits_upload_and_audit_batch(
         except HTTPException:
             raise
 
-        audit_result, extraction_result = run_document_audit_from_paths(
-            paths,
-            supabase,
-            audit_id_hint="api-upload",
-            org_id_hint="api-user",
-        )
+        try:
+            audit_result, extraction_result = run_document_audit_from_paths(
+                paths,
+                supabase,
+                audit_id_hint="api-upload",
+                org_id_hint="api-user",
+            )
+        except Exception as e:
+            _raise_config_error_if_permission_denied(e)
+            raise
 
         if audit_result is None:
             raise HTTPException(
@@ -323,7 +361,7 @@ async def audits_upload_and_audit(
         )
 
     suffix = "".join(Path(file.filename).suffixes) or ".dat"
-    tmp_path = _REPO_ROOT / "tmp" / f"upload-{os.getpid()}{suffix}"
+    tmp_path = _REPO_ROOT / "tmp" / f"upload-{uuid.uuid4().hex}{suffix}"
     tmp_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -334,12 +372,16 @@ async def audits_upload_and_audit(
         except HTTPException:
             raise
 
-        audit_result, extraction_result = run_document_audit(
-            str(tmp_path),
-            supabase,
-            audit_id_hint="api-upload",
-            org_id_hint="api-user",
-        )
+        try:
+            audit_result, extraction_result = run_document_audit(
+                str(tmp_path),
+                supabase,
+                audit_id_hint="api-upload",
+                org_id_hint="api-user",
+            )
+        except Exception as e:
+            _raise_config_error_if_permission_denied(e)
+            raise
 
         if audit_result is None:
             raise HTTPException(

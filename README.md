@@ -30,6 +30,7 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
    SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
    ANTHROPIC_API_KEY=<key>   # optional, for Claude vendor normalization
    ```
+   **Important:** Use the **service role** key (Project Settings → API → `service_role` secret), not the anon/public key. The backend needs it to create audits and write to the database.
 
 3. **Install dependencies**
    ```bash
@@ -122,3 +123,12 @@ Migrations in `backend/migrations/` define:
 - `vendor_embeddings` (pgvector, optional)
 
 Run them in order to recreate the schema from scratch.
+
+## Troubleshooting
+
+### "Permission denied for table audits" (or similar) on upload
+
+The backend must connect to Supabase with the **service role** key, not the anon key. The service role bypasses Row Level Security and has full access to tables.
+
+- **Fix:** Set `SUPABASE_SERVICE_ROLE_KEY` to the **service_role** secret from Supabase: **Project Settings → API** → under "Project API keys", copy the `service_role` key (marked secret). Do not use the `anon` public key.
+- After updating the env var, restart the backend (or redeploy). Uploads should then succeed.
