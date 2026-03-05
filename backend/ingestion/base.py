@@ -37,4 +37,5 @@ class ExtractionResult:
     processing_time_ms: int = 0
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    mime_type: Optional[str] = None
 

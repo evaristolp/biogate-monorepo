@@ -280,6 +280,9 @@ def run_audit_pipeline(
     }).eq("id", audit_id).execute()
 
     # 6. Generate and store JSON risk report (with audit versioning)
+    report: dict[str, Any] | None = None
+    certificate_id: str | None = None
+    certificate_pdf_base64: str | None = None
     try:
         from backend.report import generate_risk_report
         from backend.config.scoring_config import get_scoring_config
@@ -313,6 +316,33 @@ def run_audit_pipeline(
             "scoring_config_version": config.version,
         }
         supabase_client.table("audit_reports").insert(report_row).execute()
+
+        # 6b. Generate Compliance Certificate PDF only when we have a valid report.
+        if report is not None:
+            try:
+                from backend.certificate import generate_certificate_pdf, store_certificate
+                import base64
+                base_url = os.getenv("BIOGATE_BASE_URL", "http://localhost:8000")
+                private_key_pem = os.getenv("BIOGATE_CERTIFICATE_PRIVATE_KEY") or None
+                cert_id = str(__import__("uuid").uuid4())
+                pdf_bytes, pdf_hash_hex, signature_hex = generate_certificate_pdf(
+                    report,
+                    cert_id,
+                    base_url,
+                    private_key_pem=private_key_pem,
+                )
+                store_certificate(
+                    supabase_client,
+                    str(audit_id),
+                    next_version,
+                    pdf_hash_hex,
+                    signature_hex,
+                    certificate_id=cert_id,
+                )
+                certificate_id = cert_id
+                certificate_pdf_base64 = base64.b64encode(pdf_bytes).decode("ascii")
+            except Exception as cert_exc:
+                logger.warning("Compliance certificate generation failed: %s", cert_exc)
     except Exception as e:
         logger.warning("Failed to generate or store risk report: %s", e)
 
@@ -327,5 +357,7 @@ def run_audit_pipeline(
         "vendor_count": len(vendors_final),
         "risk_summary": risk_summary,
         "vendors": vendors_final,
-        "report": report if "report" in locals() else None,
+        "report": report,
+        "certificate_id": certificate_id,
+        "certificate_pdf_base64": certificate_pdf_base64,
     }

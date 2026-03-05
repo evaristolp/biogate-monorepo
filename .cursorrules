@@ -1,6 +1,9 @@
 # BioGate Project Context
 # Drop this file in your repo root as .cursorrules
 
+## Before You Start
+**Always check the 180-day timeline before beginning work.** Read `docs/BioGate_180Day_Timeline_Amendment_v1_1.docx` (or extract its text) to align scope with Week 6/7 tracks (multi-format ingestion, Compliance Certificate), definition of done, and priorities. If the user’s request touches roadmap or sprint scope, confirm against the timeline first.
+
 ## What BioGate Is
 AI-native BIOSECURE compliance platform. Automates supply chain auditing for biotech companies under the BIOSECURE Act (NDAA Section 851, signed Dec 2025).
 

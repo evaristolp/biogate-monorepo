@@ -11,6 +11,7 @@ from supabase import create_client
 from .auth import require_auth
 from .audits_schema import MAX_FILE_SIZE_BYTES
 from backend.ingestion.orchestrator import run_document_audit, run_document_audit_from_paths
+from backend.document_uploads import record_document_upload
 from backend.overrides import apply_override, get_effective_tier
 from backend.report import generate_risk_report
 
@@ -60,6 +61,23 @@ def health_check():
     }
 
 
+@app.get("/verify/{certificate_id}")
+async def verify_certificate_endpoint(certificate_id: str):
+    """
+    Public verification endpoint: returns JSON confirming certificate authenticity.
+    Scan the QR code on the Compliance Certificate or visit this URL with the certificate ID.
+    """
+    try:
+        supabase = _get_supabase()
+    except HTTPException:
+        raise
+    from backend.certificate import verify_certificate as do_verify
+    result = do_verify(certificate_id, supabase)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+    return result
+
+
 @app.post("/audits/upload")
 async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_auth)):
     """
@@ -102,6 +120,18 @@ async def audits_upload(file: UploadFile = File(...), _: None = Depends(require_
         result = process_document(str(tmp_path), audit_id=audit_id, org_id=org_id)
 
         needs_review_count = sum(1 for v in result.vendors if v.needs_review)
+
+        try:
+            supabase = _get_supabase()
+            record_document_upload(
+                supabase,
+                file.filename or "unknown",
+                len(content),
+                result,
+                audit_id=None,
+            )
+        except HTTPException:
+            pass
 
         return {
             "status": "ok",
@@ -154,11 +184,15 @@ async def audits_upload_and_audit_batch(
 
     tmp_dir = None
     paths: list[str] = []
+    total_size = 0
     try:
         tmp_dir = tempfile.mkdtemp(prefix="biogate-batch-")
         tmp_path = Path(tmp_dir)
+        used_names: set[str] = set()
+        used_count: dict[str, int] = {}
         for i, upload in enumerate(files):
             content = await upload.read()
+            total_size += len(content)
             if len(content) > MAX_FILE_SIZE_BYTES:
                 raise HTTPException(
                     status_code=400,
@@ -167,7 +201,16 @@ async def audits_upload_and_audit_batch(
                         "message": f"File {upload.filename} exceeds {MAX_FILE_SIZE_BYTES // (1024 * 1024)} MB limit",
                     },
                 )
-            name = (Path(upload.filename).name or "").strip() or f"file_{i}.bin"
+            base_name = (Path(upload.filename).name or "").strip() or f"file_{i}.bin"
+            if base_name in used_names:
+                count = used_count[base_name]
+                stem, ext = Path(base_name).stem, Path(base_name).suffix
+                name = f"{stem}_{count}{ext}"
+                used_count[base_name] = count + 1
+            else:
+                used_names.add(base_name)
+                used_count[base_name] = 1
+                name = base_name
             out_path = tmp_path / name
             out_path.write_bytes(content)
             paths.append(str(out_path))
@@ -204,6 +247,14 @@ async def audits_upload_and_audit_batch(
                     },
                 },
             )
+
+        record_document_upload(
+            supabase,
+            f"batch ({len(paths)} files)",
+            total_size,
+            extraction_result,
+            audit_id=audit_result["audit_id"],
+        )
 
         needs_review_count = sum(1 for v in extraction_result.vendors if v.needs_review)
         audit_payload = dict(audit_result)
@@ -301,6 +352,14 @@ async def audits_upload_and_audit(file: UploadFile = File(...), _: None = Depend
                     },
                 },
             )
+
+        record_document_upload(
+            supabase,
+            file.filename or "unknown",
+            len(content),
+            extraction_result,
+            audit_id=audit_result["audit_id"],
+        )
 
         needs_review_count = sum(1 for v in extraction_result.vendors if v.needs_review)
         audit_payload = dict(audit_result)

@@ -189,7 +189,7 @@ def process_document(file_path: str, audit_id: str, org_id: str) -> ExtractionRe
     elif handler_name == "image_vision_parser":
         result = extract_from_vision(file_path, is_pdf=False)
     elif handler_name == "email_parser":
-        result = extract_from_email(file_path)
+        result = extract_from_email(file_path, audit_id=audit_id, org_id=org_id)
     elif handler_name == "docx_parser":
         result = extract_from_docx(file_path)
     else:
@@ -214,6 +214,7 @@ def process_document(file_path: str, audit_id: str, org_id: str) -> ExtractionRe
 
     elapsed_ms = int((time.perf_counter() - start) * 1000)
     result.processing_time_ms = elapsed_ms
+    result.mime_type = mime_type
 
     logger.info(
         "Completed ingestion pipeline",

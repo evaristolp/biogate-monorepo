@@ -38,7 +38,7 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
    ```
 
 4. **Apply database migrations**  
-   Run the SQL in `backend/migrations/` in order (001 → 002 → 003 → 004) in the Supabase SQL Editor (or your migration tool).
+   Run the SQL in `backend/migrations/` in order (001 → … → 009) in the Supabase SQL Editor (or your migration tool).
 
 5. **Run watchlist ingestion** (populates `watchlist_entities` and `watchlist_snapshots`)
    ```bash
@@ -58,7 +58,8 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
 
 ## Multi-format ingestion
 
-- **Supported formats (v1)**: CSV, Excel (`.xlsx` / `.xls`), text-based PDF. Image, email, and DOCX ingestion are wired but vendor extraction is currently experimental (no automatic vendors returned yet).
+- **Supported formats (v1)**: CSV, Excel (`.xlsx` / `.xls`), text-based PDF, images (vision), email (body + attachments re-routed through pipeline). DOCX is wired but vendor extraction is experimental.
+- **Document uploads**: Each processed file is recorded in `document_uploads` (file metadata, extraction method, vendors extracted, confidence).
 - **Ingestion-only API** (for preview / QA):
   - `POST /audits/upload` with multipart `file` (CSV, Excel, PDF, image, email, DOCX).
   - Returns extraction metadata only:
@@ -67,7 +68,7 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
   - `POST /audits/upload_and_audit` with multipart `file` (CSV, Excel, text-based PDF).
   - Runs the ingestion engine, then feeds extracted vendors into `run_audit_pipeline`.
   - Response matches the CSV path plus an `ingestion` block:
-    - Top-level: `audit_id`, `vendor_count`, `risk_summary`, `vendors`, `report`.
+    - Top-level: `audit_id`, `vendor_count`, `risk_summary`, `vendors`, `report`, `certificate_id`, `certificate_pdf_base64`.
     - `ingestion`: `vendors_extracted`, `errors`, `warnings`, `extraction_method`, `confidence`, `processing_time_ms`, `needs_review`.
 - **Multi-source (folder) audit**: One audit from many files (e.g. a folder of CSVs, PDFs, receipts):
   - `POST /audits/upload_and_audit_batch` with multipart `files` (one or more files).
@@ -86,6 +87,14 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
 - **End-to-end document audit (multi-format → Supabase)**:
 
   A dedicated CLI wrapper can be added to call `backend.ingestion.orchestrator.run_document_audit` with your Supabase credentials; for now, use the FastAPI endpoint `POST /audits/upload_and_audit` as shown above.
+
+## Compliance Certificate (Week 6)
+
+- After each audit, a **Compliance Certificate** PDF is generated (WeasyPrint) with BioGate letterhead, audit date, org name, watchlist sources, full vendor table with tiers and evidence, attestation, and a verification QR code.
+- The PDF hash is signed with `BIOGATE_CERTIFICATE_PRIVATE_KEY` (PEM). Set `BIOGATE_CERTIFICATE_PUBLIC_KEY` for signature verification.
+- **GET /verify/{certificate_id}** (public) returns JSON: `certificate_id`, `audit_id`, `issued_at`, `pdf_hash`, `signature_valid`.
+- Optional env: `BIOGATE_BASE_URL` (default `http://localhost:8000`) for the verification URL embedded in the QR code.
+- The audit response includes `certificate_id` and `certificate_pdf_base64`; decode and save as PDF to open in Adobe Reader.
 
 ## Tests
 
@@ -108,6 +117,8 @@ Migrations in `backend/migrations/` define:
 
 - `organizations`, `audits`, `vendors` (audit pipeline)
 - `watchlist_entities`, `watchlist_snapshots` (watchlist ingestion)
+- `document_uploads` (file metadata per ingestion; Week 6)
+- `audit_reports`, `compliance_certificates` (risk report + certificate verification)
 - `vendor_embeddings` (pgvector, optional)
 
 Run them in order to recreate the schema from scratch.
