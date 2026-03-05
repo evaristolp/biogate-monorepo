@@ -16,3 +16,4 @@ weasyprint
 qrcode[pil]
 cryptography
 python-magic
+resend

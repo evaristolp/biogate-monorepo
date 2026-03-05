@@ -99,11 +99,36 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
 
 ### Email delivery (optional)
 
-- **Single-file and batch audit** endpoints accept an optional form field `email`. When set and SMTP is configured, the backend sends one email to that address with the risk summary and the Compliance Certificate PDF attached.
-- **Env vars** (all optional; if any are missing, email is skipped and no error is raised):
-  - `BIOGATE_EMAIL_FROM` — From address (e.g. `noreply@biogate.us`)
-  - `SMTP_HOST`, `SMTP_PORT` (default `587`), `SMTP_USER`, `SMTP_PASSWORD`
+- **Single-file and batch audit** endpoints accept an optional form field `email`. When set and email is configured, the backend sends one email to that address with the risk summary and the Compliance Certificate PDF attached.
+- **Resend (recommended):** Set `RESEND_API_KEY` (from [Resend](https://resend.com)) and `BIOGATE_EMAIL_FROM` (e.g. `onboarding@yourdomain.com` — use a [verified domain](https://resend.com/docs/dashboard/domains/introduction)). No SMTP needed.
+- **SMTP fallback:** If Resend is not configured, SMTP is used when set:
+  - `BIOGATE_EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT` (default `587`), `SMTP_USER`, `SMTP_PASSWORD`
+- If neither Resend nor SMTP is configured, email is skipped and no error is raised.
 - Example: `curl -X POST -F "file=@vendors.csv" -F "email=you@example.com" http://127.0.0.1:8000/audits/upload_and_audit`
+
+#### Resend setup (where the key goes, domain, noreply)
+
+1. **Where the API key goes**  
+   Put it in your **`.env`** file at the repo root (same folder as `backend/` and `frontend/`). Copy `.env.example` to `.env` if you don’t have one, then add:
+   ```bash
+   RESEND_API_KEY=re_xxxxxxxxxxxx
+   BIOGATE_EMAIL_FROM=BioGate <noreply@yourdomain.com>
+   ```
+   Replace `re_xxxxxxxxxxxx` with your real key (starts with `re_`). **Do not commit `.env`** — it’s in `.gitignore`.  
+   If you deploy (e.g. Railway, Render, Vercel), set `RESEND_API_KEY` and `BIOGATE_EMAIL_FROM` in that platform’s environment / secrets.
+
+2. **Verify your sending domain**  
+   - Log in at [resend.com](https://resend.com) → **Domains** → **Add Domain**.
+   - Enter your domain (e.g. `biogate.us`). Resend will show **DNS records** (TXT, MX, optional CNAME).
+   - In your domain registrar or DNS host (e.g. Cloudflare, Namecheap, Vercel), add those records exactly as shown. For “noreply” you only need to send from that domain; you don’t create a real mailbox.
+   - Back in Resend, click **Verify**. Once it says verified, you can use any address at that domain as “from” (e.g. `noreply@biogate.us`).
+
+3. **The “noreply” email**  
+   You don’t create an actual inbox. You only set the **From** address that appears in the email. Use your verified domain:
+   - Format: `BIOGATE_EMAIL_FROM=BioGate <noreply@biogate.us>` (or `noreply@yourdomain.com`).
+   - “BioGate” is the display name; `noreply@…` is the sending address. Both can be changed; the domain must be the one you verified in Resend.
+   - Resend’s free tier also allows sending from `onboarding@resend.dev` for testing — you can use that first without verifying a domain:  
+     `BIOGATE_EMAIL_FROM=BioGate <onboarding@resend.dev>`
 
 ## Tests
 

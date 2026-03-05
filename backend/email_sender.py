@@ -1,8 +1,9 @@
 """
 Optional email delivery for audit reports.
 
-Uses SMTP (env: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, BIOGATE_EMAIL_FROM).
-If any are unset, sending is skipped and no error is raised.
+Uses Resend when RESEND_API_KEY is set; otherwise falls back to SMTP
+(env: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, BIOGATE_EMAIL_FROM).
+If neither is configured, sending is skipped and no error is raised.
 """
 
 import base64
@@ -26,6 +27,12 @@ def _is_valid_email(value: str) -> bool:
     return _EMAIL_RE.match(value.strip()) is not None
 
 
+def _resend_configured() -> bool:
+    api_key = os.getenv("RESEND_API_KEY", "").strip()
+    from_addr = os.getenv("BIOGATE_EMAIL_FROM", "").strip()
+    return bool(api_key and from_addr)
+
+
 def _smtp_configured() -> bool:
     host = os.getenv("SMTP_HOST", "").strip()
     user = os.getenv("SMTP_USER", "").strip()
@@ -34,45 +41,18 @@ def _smtp_configured() -> bool:
     return bool(host and user and password and from_addr)
 
 
-def send_audit_report_email(
-    *,
-    to_email: str,
+def _build_body_text(
     audit_id: str,
-    risk_summary: dict,
     vendor_count: int,
-    certificate_pdf_base64: str | None = None,
-    certificate_id: str | None = None,
-    base_url: str | None = None,
-) -> None:
-    """
-    Send one email with audit summary and optional Compliance Certificate PDF.
-
-    If SMTP is not configured or to_email is invalid, returns without raising.
-    Logs and swallows send failures so the API response is not affected.
-    """
-    if not _is_valid_email(to_email):
-        logger.warning("Email delivery skipped: invalid address %r", to_email[:50] if to_email else "")
-        return
-    if not _smtp_configured():
-        logger.debug("Email delivery skipped: SMTP not configured")
-        return
-
-    from_addr = os.getenv("BIOGATE_EMAIL_FROM", "").strip()
-    host = os.getenv("SMTP_HOST", "").strip()
-    port_str = os.getenv("SMTP_PORT", "587").strip()
-    try:
-        port = int(port_str)
-    except ValueError:
-        port = 587
-    user = os.getenv("SMTP_USER", "").strip()
-    password = os.getenv("SMTP_PASSWORD", "").strip()
-
+    risk_summary: dict,
+    certificate_id: str | None,
+    base_url: str | None,
+) -> str:
     red = risk_summary.get("red", 0)
     amber = risk_summary.get("amber", 0)
     yellow = risk_summary.get("yellow", 0)
     green = risk_summary.get("green", 0)
-
-    body_lines = [
+    lines = [
         "Your BioGate vendor screening audit is complete.",
         "",
         f"Audit ID: {audit_id}",
@@ -86,15 +66,71 @@ def send_audit_report_email(
         "",
     ]
     if certificate_id and base_url:
-        body_lines.append(f"Verify this certificate: {base_url.rstrip('/')}/verify/{certificate_id}")
-    body_lines.append("")
-    body_lines.append("— BioGate")
+        lines.append(f"Verify this certificate: {base_url.rstrip('/')}/verify/{certificate_id}")
+    lines.extend(["", "— BioGate"])
+    return "\n".join(lines)
+
+
+def _send_via_resend(
+    *,
+    to_email: str,
+    subject: str,
+    body_text: str,
+    certificate_pdf_base64: str | None,
+    certificate_id: str | None,
+    audit_id: str,
+) -> bool:
+    """Send via Resend API. Returns True on success, False on failure (logged)."""
+    try:
+        import resend
+        resend.api_key = os.getenv("RESEND_API_KEY", "").strip()
+        from_addr = os.getenv("BIOGATE_EMAIL_FROM", "").strip()
+
+        params = {
+            "from": from_addr,
+            "to": [to_email.strip()],
+            "subject": subject,
+            "text": body_text,
+        }
+        if certificate_pdf_base64:
+            params["attachments"] = [
+                {
+                    "filename": f"biogate-certificate-{certificate_id or audit_id}.pdf",
+                    "content": certificate_pdf_base64,
+                }
+            ]
+        resend.Emails.send(params)
+        return True
+    except Exception as e:
+        logger.warning("Resend send failed: %s", e)
+        return False
+
+
+def _send_via_smtp(
+    *,
+    to_email: str,
+    subject: str,
+    body_text: str,
+    certificate_pdf_base64: str | None,
+    certificate_id: str | None,
+    audit_id: str,
+) -> bool:
+    """Send via SMTP. Returns True on success, False on failure (logged)."""
+    from_addr = os.getenv("BIOGATE_EMAIL_FROM", "").strip()
+    host = os.getenv("SMTP_HOST", "").strip()
+    port_str = os.getenv("SMTP_PORT", "587").strip()
+    try:
+        port = int(port_str)
+    except ValueError:
+        port = 587
+    user = os.getenv("SMTP_USER", "").strip()
+    password = os.getenv("SMTP_PASSWORD", "").strip()
 
     msg = MIMEMultipart()
-    msg["Subject"] = f"BioGate Audit Report – {audit_id[:8]}"
+    msg["Subject"] = subject
     msg["From"] = from_addr
     msg["To"] = to_email.strip()
-    msg.attach(MIMEText("\n".join(body_lines), "plain", "utf-8"))
+    msg.attach(MIMEText(body_text, "plain", "utf-8"))
 
     if certificate_pdf_base64:
         try:
@@ -115,6 +151,68 @@ def send_audit_report_email(
             server.starttls()
             server.login(user, password)
             server.sendmail(from_addr, [to_email.strip()], msg.as_string())
-        logger.info("Audit report email sent to %s for audit %s", to_email.strip(), audit_id)
+        return True
     except Exception as e:
-        logger.warning("Failed to send audit report email to %s: %s", to_email.strip(), e)
+        logger.warning("SMTP send failed: %s", e)
+        return False
+
+
+def send_audit_report_email(
+    *,
+    to_email: str,
+    audit_id: str,
+    risk_summary: dict,
+    vendor_count: int,
+    certificate_pdf_base64: str | None = None,
+    certificate_id: str | None = None,
+    base_url: str | None = None,
+) -> None:
+    """
+    Send one email with audit summary and optional Compliance Certificate PDF.
+
+    Uses Resend if RESEND_API_KEY and BIOGATE_EMAIL_FROM are set; otherwise
+    uses SMTP when configured. If neither is configured or to_email is invalid,
+    returns without raising. Logs and swallows send failures so the API response
+    is not affected.
+    """
+    if not _is_valid_email(to_email):
+        logger.warning("Email delivery skipped: invalid address %r", to_email[:50] if to_email else "")
+        return
+    if not _resend_configured() and not _smtp_configured():
+        logger.debug("Email delivery skipped: neither Resend nor SMTP configured")
+        return
+
+    subject = f"BioGate Audit Report – {audit_id[:8]}"
+    body_text = _build_body_text(
+        audit_id=audit_id,
+        vendor_count=vendor_count,
+        risk_summary=risk_summary,
+        certificate_id=certificate_id,
+        base_url=base_url,
+    )
+    to_stripped = to_email.strip()
+
+    sent = False
+    if _resend_configured():
+        sent = _send_via_resend(
+            to_email=to_stripped,
+            subject=subject,
+            body_text=body_text,
+            certificate_pdf_base64=certificate_pdf_base64,
+            certificate_id=certificate_id,
+            audit_id=audit_id,
+        )
+    if not sent and _smtp_configured():
+        sent = _send_via_smtp(
+            to_email=to_stripped,
+            subject=subject,
+            body_text=body_text,
+            certificate_pdf_base64=certificate_pdf_base64,
+            certificate_id=certificate_id,
+            audit_id=audit_id,
+        )
+
+    if sent:
+        logger.info("Audit report email sent to %s for audit %s", to_stripped, audit_id)
+    else:
+        logger.warning("Audit report email could not be sent to %s for audit %s", to_stripped, audit_id)
