@@ -31,7 +31,7 @@ export function Navbar() {
       >
         <Link
           href="/"
-          className={`text-3xl font-extrabold tracking-tight transition-colors duration-500 ${
+          className={`text-3xl font-extralight tracking-wide transition-colors duration-500 ${
             scrolled ? "text-foreground" : "text-white"
           }`}
         >
