@@ -57,6 +57,10 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
    - `curl -X POST -F "file=@tests/fixtures/test_10_vendors.csv" http://127.0.0.1:8000/audits/upload_and_audit"`
    - Response includes `audit_id`, `risk_summary`, and `vendors` with `risk_tier` and `match_evidence`.
 
+### Frontend integration (CORS)
+
+When a browser app (e.g. Next.js on Vercel) calls this API from another origin, set **`CORS_ORIGINS`** in the backend env to a comma-separated list of allowed origins (e.g. `https://biogate.us,https://www.biogate.us`). Defaults to `http://localhost:3000,http://127.0.0.1:3000` for local dev. See `docs/V0_FASTAPI_INTEGRATION_PROMPT.md` for a copy-paste prompt to wire a v0 Next.js UI to this backend.
+
 ## Multi-format ingestion
 
 - **Supported formats (v1)**: CSV, Excel (`.xlsx` / `.xls`), text-based PDF, images (vision), email (body + attachments re-routed through pipeline). DOCX is wired but vendor extraction is experimental.
@@ -129,6 +133,27 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
    - “BioGate” is the display name; `noreply@…` is the sending address. Both can be changed; the domain must be the one you verified in Resend.
    - Resend’s free tier also allows sending from `onboarding@resend.dev` for testing — you can use that first without verifying a domain:  
      `BIOGATE_EMAIL_FROM=BioGate <onboarding@resend.dev>`
+
+#### If email doesn’t arrive — where to check
+
+1. **Backend logs**  
+   Run the API with logs visible (e.g. `uvicorn backend.main:app --host 127.0.0.1 --port 8000` in a terminal). When you run an audit with an email address, look for:
+   - `Sending audit report email to you@... via Resend ...` — Resend was used.
+   - `Audit report email sent to ...` — send succeeded.
+   - `Resend send failed: ...` — Resend API error (message and traceback show the cause).
+   - `Email delivery skipped: set RESEND_API_KEY and BIOGATE_EMAIL_FROM` — env not loaded or not set.
+   - `Email delivery skipped: invalid address` — the “email” value was empty or invalid.
+
+2. **Resend dashboard**  
+   [resend.com](https://resend.com) → **Emails**. You’ll see each send attempt and status (sent, delivered, bounced, failed). If the request never reaches Resend, the attempt won’t appear here.
+
+3. **From address and domain**  
+   `BIOGATE_EMAIL_FROM` must use a **verified** domain in Resend. For “biogate” verified, use e.g. `BioGate <noreply@biogate.us>` (or the exact domain you verified). Wrong domain or typo → Resend can reject with a domain/validation error.
+
+4. **Quick test**  
+   From the repo root with `.env` set:  
+   `curl -X POST -F "file=@tests/fixtures/test_10_vendors.csv" -F "email=YOUR_REAL_EMAIL" http://127.0.0.1:8000/audits/upload_and_audit`  
+   Watch the backend terminal for the log lines above.
 
 ## Tests
 

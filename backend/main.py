@@ -6,6 +6,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from supabase import create_client
 
@@ -30,6 +31,16 @@ logging.basicConfig(
 )
 
 app = FastAPI(title="BioGate API")
+
+# CORS: allow frontend (e.g. Next.js on Vercel or localhost:3000) to call this API.
+_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _cors_origins.split(",") if o.strip()],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Biogate-User"],
+)
 
 
 @app.on_event("startup")

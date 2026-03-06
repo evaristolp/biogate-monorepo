@@ -102,7 +102,7 @@ def _send_via_resend(
         resend.Emails.send(params)
         return True
     except Exception as e:
-        logger.warning("Resend send failed: %s", e)
+        logger.warning("Resend send failed: %s", e, exc_info=True)
         return False
 
 
@@ -179,7 +179,9 @@ def send_audit_report_email(
         logger.warning("Email delivery skipped: invalid address %r", to_email[:50] if to_email else "")
         return
     if not _resend_configured() and not _smtp_configured():
-        logger.debug("Email delivery skipped: neither Resend nor SMTP configured")
+        logger.info(
+            "Email delivery skipped: set RESEND_API_KEY and BIOGATE_EMAIL_FROM (or SMTP_*) to enable."
+        )
         return
 
     subject = f"BioGate Audit Report – {audit_id[:8]}"
@@ -194,6 +196,7 @@ def send_audit_report_email(
 
     sent = False
     if _resend_configured():
+        logger.info("Sending audit report email to %s via Resend ...", to_stripped)
         sent = _send_via_resend(
             to_email=to_stripped,
             subject=subject,
