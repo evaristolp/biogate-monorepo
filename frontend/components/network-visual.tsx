@@ -22,13 +22,17 @@ const LABELS = [
 ]
 
 const ANCHOR_COUNT = 20
-const WEB_NODE_COUNT = 60 // small unlabeled web-filler nodes
-const TOTAL = ANCHOR_COUNT + WEB_NODE_COUNT
+const WEB_NODE_COUNT = 60 // small unlabeled web-filler nodes (desktop)
+const MOBILE_ANCHOR_COUNT = 10
+const MOBILE_WEB_NODE_COUNT = 20
 
-function createNodes(width: number, height: number): Node[] {
+function createNodes(width: number, height: number, isMobile: boolean): Node[] {
+  const anchorCount = isMobile ? MOBILE_ANCHOR_COUNT : ANCHOR_COUNT
+  const webCount = isMobile ? MOBILE_WEB_NODE_COUNT : WEB_NODE_COUNT
+  const total = anchorCount + webCount
   const nodes: Node[] = []
-  for (let i = 0; i < TOTAL; i++) {
-    const isAnchor = i < ANCHOR_COUNT
+  for (let i = 0; i < total; i++) {
+    const isAnchor = i < anchorCount
     const risk = Math.random()
     nodes.push({
       x: Math.random() * width,
@@ -58,6 +62,10 @@ export function NetworkVisual() {
   const animRef = useRef<number>(0)
   const timeRef = useRef(0)
   const isMobileRef = useRef(false)
+  const isVisibleRef = useRef(true)
+  const lastFrameTimeRef = useRef(0)
+  const isScrollingRef = useRef(false)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isMobileRef.current) return // Disable on mobile
@@ -68,6 +76,18 @@ export function NetworkVisual() {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     }
+  }, [])
+
+  // Handle scroll events on mobile - pause animation during scroll
+  const handleScroll = useCallback(() => {
+    if (!isMobileRef.current) return
+    isScrollingRef.current = true
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current)
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      isScrollingRef.current = false
+    }, 150)
   }, [])
 
   useEffect(() => {
@@ -85,23 +105,54 @@ export function NetworkVisual() {
       canvas.style.width = `${parent.clientWidth}px`
       canvas.style.height = `${parent.clientHeight}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      nodesRef.current = createNodes(parent.clientWidth, parent.clientHeight)
+      nodesRef.current = createNodes(parent.clientWidth, parent.clientHeight, isMobileRef.current)
     }
 
     // Detect mobile/touch device
     isMobileRef.current = window.matchMedia("(pointer: coarse)").matches || 
       window.matchMedia("(max-width: 768px)").matches
 
+    // On mobile, pause animation when scrolled out of view to prevent jank
+    let observer: IntersectionObserver | null = null
+    if (isMobileRef.current) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          isVisibleRef.current = entries[0]?.isIntersecting ?? true
+        },
+        { threshold: 0.1 }
+      )
+      observer.observe(canvas)
+    }
+
     resize()
     window.addEventListener("resize", resize)
     if (!isMobileRef.current) {
       window.addEventListener("mousemove", handleMouseMove)
+    } else {
+      // On mobile, listen for scroll to pause animation during scrolling
+      window.addEventListener("scroll", handleScroll, { passive: true })
     }
 
     const w = () => canvas.clientWidth
     const h = () => canvas.clientHeight
 
-    const draw = () => {
+    const draw = (timestamp: number) => {
+      // On mobile, skip rendering when scrolled out of view or during scrolling
+      if (isMobileRef.current && (!isVisibleRef.current || isScrollingRef.current)) {
+        animRef.current = requestAnimationFrame(draw)
+        return
+      }
+
+      // Throttle frame rate on mobile to ~30fps for smoother experience
+      if (isMobileRef.current) {
+        const elapsed = timestamp - lastFrameTimeRef.current
+        if (elapsed < 33) { // ~30fps
+          animRef.current = requestAnimationFrame(draw)
+          return
+        }
+        lastFrameTimeRef.current = timestamp
+      }
+
       timeRef.current += 0.006
       const t = timeRef.current
       const nodes = nodesRef.current
@@ -264,13 +315,21 @@ export function NetworkVisual() {
       cancelAnimationFrame(animRef.current)
       window.removeEventListener("resize", resize)
       window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("scroll", handleScroll)
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
+      if (observer) observer.disconnect()
     }
-  }, [handleMouseMove])
+  }, [handleMouseMove, handleScroll])
 
   return (
     <canvas
       ref={canvasRef}
       className="absolute inset-0 h-full w-full pointer-events-none"
+      style={{ 
+        touchAction: "none",
+        willChange: "transform",
+        transform: "translateZ(0)" // Force GPU acceleration
+      }}
       aria-hidden="true"
     />
   )

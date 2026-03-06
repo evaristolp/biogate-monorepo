@@ -33,7 +33,7 @@ export default function Home() {
                 biogate
               </p>
               <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/40">
-                Compliance infrastructure for the next generation of biotech.
+                Compliance infrastructure for the next generation.
               </p>
             </div>
             <div className="flex gap-8 text-sm text-white/40">
