@@ -1,0 +1,5 @@
+# Force Railway to use the repo Dockerfile instead of Railpack/Nixpacks.
+# Without this, Railpack can fail on this monorepo with "Error creating build plan with Railpack".
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"

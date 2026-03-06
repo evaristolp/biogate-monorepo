@@ -61,6 +61,10 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
 
 When a browser app (e.g. Next.js on Vercel) calls this API from another origin, set **`CORS_ORIGINS`** in the backend env to a comma-separated list of allowed origins (e.g. `https://biogate.us,https://www.biogate.us`). Defaults to `http://localhost:3000,http://127.0.0.1:3000` for local dev. See `docs/V0_FASTAPI_INTEGRATION_PROMPT.md` for a copy-paste prompt to wire a v0 Next.js UI to this backend.
 
+### Deploying the API 24/7
+
+To run the backend online constantly (not just local dev), see **`docs/DEPLOYMENT.md`**. It covers **Railway**, **Render**, and **Fly.io** with cost estimates (~$2–15/month), a single **Dockerfile** at the repo root, and the env vars to set in production.
+
 ## Multi-format ingestion
 
 - **Supported formats (v1)**: CSV, Excel (`.xlsx` / `.xls`), text-based PDF, images (vision), email (body + attachments re-routed through pipeline). DOCX is wired but vendor extraction is experimental.
