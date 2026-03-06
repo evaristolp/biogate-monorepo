@@ -9,12 +9,12 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Navbar />
       {/* --- Mesh gradient hero with network visual --- */}
-      <div className="relative min-h-dvh overflow-hidden bg-[#0c1222] [contain:layout_paint] [content-visibility:auto]">
-        {/* Layered radial blobs */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,#3b82f6_0%,transparent_50%)] opacity-60" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,#06b6d4_0%,transparent_45%)] opacity-50" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_60%_80%,#6366f1_0%,transparent_50%)] opacity-40" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_80%,#0ea5e9_0%,transparent_40%)] opacity-30" />
+      <div className="relative min-h-dvh overflow-hidden bg-[#0B1A2E] [contain:layout_paint] [content-visibility:auto]">
+        {/* Layered radial blobs using brand palette */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,#1A4B5C_0%,transparent_50%)] opacity-70" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,#2E8B8B_0%,transparent_45%)] opacity-50" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_60%_80%,#0E2A3F_0%,transparent_50%)] opacity-60" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_80%,#1A4B5C_0%,transparent_40%)] opacity-40" />
         {/* Interactive network canvas */}
         <NetworkVisual />
         <div className="relative z-10 flex min-h-dvh flex-col justify-center">
@@ -25,7 +25,7 @@ export default function Home() {
         <SecurityBanner />
         <HowItWorks />
       </main>
-      <footer className="bg-[#0c1222] px-8 pb-8 pt-16">
+      <footer className="bg-[#0B1A2E] px-8 pb-8 pt-16">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
             <div>
