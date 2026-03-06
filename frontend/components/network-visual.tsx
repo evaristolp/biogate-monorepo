@@ -328,7 +328,8 @@ export function NetworkVisual() {
       style={{ 
         touchAction: "none",
         willChange: "transform",
-        transform: "translateZ(0)" // Force GPU acceleration
+        transform: "translateZ(0)",
+        backfaceVisibility: "hidden"
       }}
       aria-hidden="true"
     />

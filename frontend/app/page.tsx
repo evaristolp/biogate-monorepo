@@ -9,7 +9,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Navbar />
       {/* --- Mesh gradient hero with network visual --- */}
-      <div className="relative min-h-dvh overflow-hidden bg-[#0c1222]">
+      <div className="relative min-h-dvh overflow-hidden bg-[#0c1222] [contain:layout_paint] [content-visibility:auto]">
         {/* Layered radial blobs */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,#3b82f6_0%,transparent_50%)] opacity-60" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,#06b6d4_0%,transparent_45%)] opacity-50" />
