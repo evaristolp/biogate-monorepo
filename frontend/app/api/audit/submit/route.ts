@@ -1,8 +1,16 @@
 import { createClient as createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
-const BACKEND_URL =
-  process.env.BIOGATE_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
+function normalizeBaseUrl(raw: string | undefined): string {
+  if (!raw?.trim()) return "http://localhost:8000"
+  const s = raw.trim()
+  if (/^https?:\/\//i.test(s)) return s
+  return `https://${s}`
+}
+
+const BACKEND_URL = normalizeBaseUrl(
+  process.env.BIOGATE_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
+)
 
 export async function POST(request: Request) {
   // Verify the user is authenticated
