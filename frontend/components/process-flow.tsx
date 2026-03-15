@@ -37,7 +37,7 @@ export function ProcessFlow() {
             </span>
           </div>
           <h2 className="font-display text-[36px] font-normal leading-tight text-[#F0EEE8] md:text-[44px]">
-            From vendor list to intelligence report.
+            From vendor list to screening report.
           </h2>
           <p className="mt-3 max-w-lg text-[16px] text-[#909090]">
             One upload. Four federal watchlists. Your answer in under an hour.

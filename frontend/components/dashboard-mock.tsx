@@ -60,7 +60,7 @@ export function DashboardMock() {
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px w-8 bg-[#C9A96E]" />
             <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#C9A96E]">
-              Intelligence report
+              Screening report
             </span>
           </div>
           <h2 className="font-display text-[36px] font-normal leading-tight text-[#F0EEE8] md:text-[44px]">
@@ -85,7 +85,7 @@ export function DashboardMock() {
               <div className="h-2.5 w-2.5 rounded-full bg-[#1E1F23]" />
             </div>
             <div className="flex-1 rounded-sm bg-[#090909] px-3 py-1 text-center font-mono text-[11px] text-[#333336]">
-              biogate.us / report / pre-audit-intelligence
+              biogate.us / report / pre-audit-screening
             </div>
           </div>
 
@@ -160,7 +160,7 @@ export function DashboardMock() {
 
         {/* Scope note */}
         <p className="mt-5 text-[12px] text-[#333336]">
-          This report is pre-audit intelligence, not legal advice. All findings
+          This report is pre-audit analysis, not legal advice. All findings
           require attorney review before any legal determination is made.
         </p>
       </div>

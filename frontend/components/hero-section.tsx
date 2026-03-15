@@ -10,7 +10,7 @@ export function HeroSection() {
         <div className="mb-8 flex items-center gap-3">
           <div className="h-px w-8 bg-[#C9A96E]" />
           <span className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-[#C9A96E]">
-            BIOSECURE Act · Supply chain intelligence
+            BIOSECURE Act · Supply chain screening
           </span>
         </div>
 
@@ -22,7 +22,7 @@ export function HeroSection() {
         {/* Subheadline */}
         <p className="mt-8 max-w-[500px] text-[16px] leading-[1.72] text-[#909090]">
           The OMB BCC list publishes December 2026. BioGate screens your vendor
-          data against four federal watchlists and delivers the intelligence
+          data against four federal watchlists and delivers the screening
           report before your auditors arrive.
         </p>
 

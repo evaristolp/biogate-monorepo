@@ -22,7 +22,7 @@ export function FinalCta() {
         </h2>
 
         <p className="mt-6 max-w-lg text-[16px] leading-relaxed text-[#909090]">
-          The OMB BCC list publishes in December. We deliver the intelligence
+          The OMB BCC list publishes in December. We deliver the screening
           report before the question gets asked. One upload. Four watchlists.
           Your answer in under an hour.
         </p>

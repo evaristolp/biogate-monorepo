@@ -18,7 +18,7 @@ export default function Home() {
       <Navbar />
 
       {/* 1 — Hero */}
-      <div className="relative min-h-dvh overflow-hidden [contain:layout_paint]">
+      <div id="hero" className="relative min-h-dvh overflow-hidden [contain:layout_paint]">
         {/* Very subtle warm radial — barely visible, not decorative */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,rgba(201,169,110,0.04)_0%,transparent_65%)]" />
         <HeroVisual />
@@ -45,44 +45,31 @@ export default function Home() {
       {/* 7 — Final CTA */}
       <FinalCta />
 
-      {/* Footer */}
-      <footer className="border-t border-[#1E1F23] bg-[#090909] px-6 pb-10 pt-14">
-        <div className="mx-auto max-w-[1200px]">
-          <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M16 3L4 8v8c0 7 5.3 13.5 12 15 6.7-1.5 12-8 12-15V8L16 3z" stroke="#C9A96E" strokeWidth="1.6" strokeLinejoin="round" />
-                  <line x1="11" y1="12" x2="11" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <line x1="16" y1="10" x2="16" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <line x1="21" y1="12" x2="21" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <line x1="10" y1="17" x2="22" y2="17" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <circle cx="11" cy="17" r="1.4" fill="#C9A96E" />
-                  <circle cx="16" cy="17" r="1.4" fill="#C9A96E" />
-                  <circle cx="21" cy="17" r="1.4" fill="#C9A96E" />
-                </svg>
-                <span className="font-display text-[16px] font-normal text-[#F0EEE8]">BioGate</span>
-              </div>
-              <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-[#3A3A3E]">
-                Compliance intelligence for the next generation.
-              </p>
-            </div>
-            <div className="flex gap-8 text-[13px] text-[#3A3A3E]">
-              <Link href="#" className="transition-colors hover:text-[#585858]">Privacy</Link>
-              <Link href="#" className="transition-colors hover:text-[#585858]">Terms</Link>
-              <Link href="#" className="transition-colors hover:text-[#585858]">Contact</Link>
-            </div>
-          </div>
-          <div className="mt-10 border-t border-[#1E1F23] pt-6 flex items-center justify-between">
-            <p className="text-[11px] text-[#2A2A2E]">
-              {"© 2026 BioGate, Inc. · biogate.us"}
-            </p>
-            <p className="text-[11px] text-[#2A2A2E]">
-              BioGate produces pre-audit intelligence, not legal advice.
-            </p>
-          </div>
+      {/* Brutalist footer statement */}
+      <div className="border-t border-[#1E1F23] bg-[#090909] overflow-hidden">
+        <div className="px-5 pt-16 pb-10">
+          <p className="font-display font-normal leading-[0.86] tracking-[-0.03em] text-[#F0EEE8] uppercase"
+            style={{ fontSize: "clamp(2.8rem, 10.5vw, 13rem)" }}>
+            Compliance<br />
+            intel for the<br />
+            next generation.
+          </p>
         </div>
-      </footer>
+
+        {/* Minimal legal strip */}
+        <div className="border-t border-[#1E1F23] px-5 py-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-sans text-[11px] uppercase tracking-[0.2em] text-[#2A2A2E]">
+            © 2026 Biogate, Inc.
+          </p>
+          <div className="flex gap-6 text-[11px] uppercase tracking-[0.18em] text-[#2A2A2E]">
+            <Link href="#" className="transition-colors hover:text-[#585858]">Privacy</Link>
+            <Link href="#" className="transition-colors hover:text-[#585858]">Terms</Link>
+          </div>
+          <p className="font-sans text-[11px] uppercase tracking-[0.18em] text-[#2A2A2E]">
+            Pre-audit analysis. Not legal advice.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

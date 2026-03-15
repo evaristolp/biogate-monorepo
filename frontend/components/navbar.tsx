@@ -40,20 +40,10 @@ export function Navbar() {
         className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-5"
         aria-label="Main navigation"
       >
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M16 3L4 8v8c0 7 5.3 13.5 12 15 6.7-1.5 12-8 12-15V8L16 3z" stroke="#C9A96E" strokeWidth="1.6" strokeLinejoin="round" />
-            <line x1="11" y1="12" x2="11" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-            <line x1="16" y1="10" x2="16" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-            <line x1="21" y1="12" x2="21" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-            <line x1="10" y1="17" x2="22" y2="17" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-            <circle cx="11" cy="17" r="1.4" fill="#C9A96E" />
-            <circle cx="16" cy="17" r="1.4" fill="#C9A96E" />
-            <circle cx="21" cy="17" r="1.4" fill="#C9A96E" />
-          </svg>
-          <span className="font-display text-[18px] font-normal tracking-tight text-[#F0EEE8] transition-colors group-hover:text-[#C9A96E]">
-            BioGate
+        {/* Wordmark — no icon, just the name */}
+        <Link href="/" className="group">
+          <span className="font-sans text-[13px] font-semibold uppercase tracking-[0.28em] text-[#F0EEE8] transition-opacity group-hover:opacity-60">
+            Biogate
           </span>
         </Link>
 

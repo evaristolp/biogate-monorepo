@@ -8,122 +8,109 @@ import { ScrollTrigger } from "gsap/ScrollTrigger"
 gsap.registerPlugin(ScrollTrigger)
 
 // ─── Vertex Shader ────────────────────────────────────────────────────────────
-// 3D Simplex noise displaces vertices along normals; passes vNoise to fragment
+// Plane of dots — simplex noise ripples through z-axis like fabric in wind
 const vertexShader = `
   uniform float uTime;
-  varying float vNoise;
-  varying vec3 vNormal;
+  uniform float uScroll;   // 0 → 1 progress through hero
+  varying float vDepth;
 
-  // — Simplex noise helpers (Stefan Gustavson) —
   vec3 mod289(vec3 x){ return x - floor(x*(1./289.))*289.; }
   vec4 mod289(vec4 x){ return x - floor(x*(1./289.))*289.; }
   vec4 permute(vec4 x){ return mod289(((x*34.)+1.)*x); }
   vec4 taylorInvSqrt(vec4 r){ return 1.79284291400159 - 0.85373472095314*r; }
 
   float snoise(vec3 v){
-    const vec2 C = vec2(1./6., 1./3.);
+    const vec2 C = vec2(1./6.,1./3.);
     const vec4 D = vec4(0.,0.5,1.,2.);
-    vec3 i  = floor(v + dot(v, C.yyy));
-    vec3 x0 = v - i + dot(i, C.xxx);
-    vec3 g  = step(x0.yzx, x0.xyz);
-    vec3 l  = 1. - g;
-    vec3 i1 = min(g.xyz, l.zxy);
-    vec3 i2 = max(g.xyz, l.zxy);
-    vec3 x1 = x0 - i1 + C.xxx;
-    vec3 x2 = x0 - i2 + C.yyy;
-    vec3 x3 = x0 - D.yyy;
+    vec3 i  = floor(v+dot(v,C.yyy));
+    vec3 x0 = v-i+dot(i,C.xxx);
+    vec3 g  = step(x0.yzx,x0.xyz);
+    vec3 l  = 1.-g;
+    vec3 i1 = min(g.xyz,l.zxy);
+    vec3 i2 = max(g.xyz,l.zxy);
+    vec3 x1 = x0-i1+C.xxx;
+    vec3 x2 = x0-i2+C.yyy;
+    vec3 x3 = x0-D.yyy;
     i = mod289(i);
     vec4 p = permute(permute(permute(
-      i.z + vec4(0.,i1.z,i2.z,1.))
-      + i.y + vec4(0.,i1.y,i2.y,1.))
-      + i.x + vec4(0.,i1.x,i2.x,1.));
+      i.z+vec4(0.,i1.z,i2.z,1.))
+      +i.y+vec4(0.,i1.y,i2.y,1.))
+      +i.x+vec4(0.,i1.x,i2.x,1.));
     float n_ = .142857142857;
-    vec3  ns = n_ * D.wyz - D.xzx;
-    vec4 j = p - 49.*floor(p*ns.z*ns.z);
+    vec3 ns = n_*D.wyz-D.xzx;
+    vec4 j = p-49.*floor(p*ns.z*ns.z);
     vec4 x_ = floor(j*ns.z);
-    vec4 y_ = floor(j - 7.*x_);
-    vec4 x = x_*ns.x + ns.yyyy;
-    vec4 y = y_*ns.x + ns.yyyy;
-    vec4 h = 1. - abs(x) - abs(y);
-    vec4 b0 = vec4(x.xy, y.xy);
-    vec4 b1 = vec4(x.zw, y.zw);
+    vec4 y_ = floor(j-7.*x_);
+    vec4 x = x_*ns.x+ns.yyyy;
+    vec4 y = y_*ns.x+ns.yyyy;
+    vec4 h = 1.-abs(x)-abs(y);
+    vec4 b0 = vec4(x.xy,y.xy);
+    vec4 b1 = vec4(x.zw,y.zw);
     vec4 s0 = floor(b0)*2.+1.;
     vec4 s1 = floor(b1)*2.+1.;
-    vec4 sh = -step(h, vec4(0.));
-    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
-    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-    vec3 p0 = vec3(a0.xy, h.x);
-    vec3 p1 = vec3(a0.zw, h.y);
-    vec3 p2 = vec3(a1.xy, h.z);
-    vec3 p3 = vec3(a1.zw, h.w);
-    vec4 norm = taylorInvSqrt(vec4(
-      dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+    vec4 sh = -step(h,vec4(0.));
+    vec4 a0 = b0.xzyw+s0.xzyw*sh.xxyy;
+    vec4 a1 = b1.xzyw+s1.xzyw*sh.zzww;
+    vec3 p0 = vec3(a0.xy,h.x);
+    vec3 p1 = vec3(a0.zw,h.y);
+    vec3 p2 = vec3(a1.xy,h.z);
+    vec3 p3 = vec3(a1.zw,h.w);
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
     p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
-    vec4 m = max(.6 - vec4(
-      dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.);
+    vec4 m = max(.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.);
     m = m*m;
-    return 42.*(dot(m*m, vec4(
-      dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3))));
+    return 42.*(dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3))));
   }
 
   void main(){
     vec3 pos = position;
-    float t   = uTime * 0.38;
+    float t = uTime * 0.5;
 
-    // layered octaves for organic complexity
-    float n  = snoise(pos * 0.9  + vec3(t * 0.6,  t * 0.4,  t * 0.3));
-    float n2 = snoise(pos * 1.9  + vec3(-t * 0.5, t * 0.7, -t * 0.2)) * 0.5;
-    float n3 = snoise(pos * 3.8  + vec3(t * 0.3, -t * 0.6,  t * 0.8)) * 0.25;
+    // fabric ripple — multi-octave z displacement
+    float wave  = snoise(vec3(pos.x * 0.6, pos.y * 0.6, t * 0.7))          * 0.55;
+    float wave2 = snoise(vec3(pos.x * 1.4 + 1.3, pos.y * 1.4 - 0.9, t * 0.4)) * 0.25;
+    float wave3 = snoise(vec3(pos.x * 3.1 - 2.2, pos.y * 3.1 + 1.7, t * 1.1)) * 0.10;
 
-    float noise = n + n2 + n3;
-    vNoise = noise;
-    vNormal = normal;
+    pos.z += wave + wave2 + wave3;
 
-    // displace along normals
-    pos += normal * noise * 0.32;
+    // tilt the plane on scroll (spin forward into viewer)
+    float tilt = uScroll * 3.14159 * 0.55;
+    float cosT = cos(tilt);
+    float sinT = sin(tilt);
+    float newY = pos.y * cosT - pos.z * sinT;
+    float newZ = pos.y * sinT + pos.z * cosT;
+    pos.y = newY;
+    pos.z = newZ;
 
+    vDepth = (wave + wave2 + wave3 + 1.0) * 0.5;
+
+    gl_PointSize = mix(1.2, 2.8, vDepth) * (1.0 - uScroll * 0.5);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
   }
 `
 
 // ─── Fragment Shader ──────────────────────────────────────────────────────────
-// Maps vNoise → heatmap gradient: deep indigo → cobalt → gold → ember
+// Crisp white dots, fade toward edges of each point
 const fragmentShader = `
-  varying float vNoise;
-  varying vec3 vNormal;
-  uniform float uTime;
-
-  vec3 heatmap(float t){
-    // 4-stop gradient:
-    // 0.0 → deep navy  (#0a0f2e)
-    // 0.3 → cobalt     (#1a3a8f)
-    // 0.6 → gold       (#C9A96E)
-    // 1.0 → ember      (#8B1A1A)
-    vec3 c0 = vec3(0.039, 0.059, 0.180); // deep navy
-    vec3 c1 = vec3(0.102, 0.227, 0.561); // cobalt
-    vec3 c2 = vec3(0.788, 0.663, 0.431); // gold (#C9A96E)
-    vec3 c3 = vec3(0.545, 0.102, 0.102); // ember
-
-    if(t < 0.333)      return mix(c0, c1, t / 0.333);
-    else if(t < 0.666) return mix(c1, c2, (t - 0.333) / 0.333);
-    else               return mix(c2, c3, (t - 0.666) / 0.334);
-  }
+  varying float vDepth;
+  uniform float uScroll;
 
   void main(){
-    float n = clamp((vNoise + 1.0) * 0.5, 0.0, 1.0);
+    // round dot shape
+    vec2 coord = gl_PointCoord - 0.5;
+    float dist = length(coord);
+    if(dist > 0.5) discard;
 
-    // subtle rim light
-    vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
-    float rim = 1.0 - max(dot(normalize(vNormal), viewDir), 0.0);
-    rim = pow(rim, 2.8) * 0.45;
+    // soft edge
+    float alpha = smoothstep(0.5, 0.15, dist);
 
-    vec3 color = heatmap(n);
-    color += vec3(0.06, 0.05, 0.03) * rim;
+    // depth-based brightness — foreground dots slightly brighter
+    float brightness = mix(0.35, 1.0, vDepth);
 
-    // vignette at edges of the sphere
-    float alpha = smoothstep(0.0, 0.18, n) * 0.88 + rim * 0.35;
+    // fade out as scroll approaches 1
+    float fadeOut = 1.0 - smoothstep(0.7, 1.0, uScroll);
 
-    gl_FragColor = vec4(color, alpha);
+    gl_FragColor = vec4(vec3(brightness), alpha * fadeOut * 0.85);
   }
 `
 
@@ -135,57 +122,68 @@ export function HeatmapMesh() {
     if (!canvas) return
 
     // ─── Renderer ─────────────────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true,
-    })
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setSize(window.innerWidth, window.innerHeight)
     renderer.setClearColor(0x000000, 0)
 
     // ─── Scene / Camera ───────────────────────────────────────────────────────
     const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      100
-    )
-    camera.position.set(0, 0, 5)
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100)
+    camera.position.set(0, 0, 4.5)
 
-    // ─── Mesh ─────────────────────────────────────────────────────────────────
-    const geometry = new THREE.IcosahedronGeometry(1.6, 128)
+    // ─── Geometry: subdivided plane rendered as Points ─────────────────────────
+    const segments = 180
+    const geometry = new THREE.PlaneGeometry(7, 7, segments, segments)
     const material = new THREE.ShaderMaterial({
       vertexShader,
       fragmentShader,
       uniforms: {
-        uTime: { value: 0 },
+        uTime:   { value: 0 },
+        uScroll: { value: 0 },
       },
       transparent: true,
       depthWrite: false,
-      side: THREE.FrontSide,
     })
-    const mesh = new THREE.Mesh(geometry, material)
-    // start off-screen right, slightly above center
-    mesh.position.set(2.2, 0.4, 0)
+
+    const mesh = new THREE.Points(geometry, material)
+    // slight tilt to look like a draped fabric at rest
+    mesh.rotation.x = -0.18
     scene.add(mesh)
 
-    // ─── GSAP ScrollTrigger ───────────────────────────────────────────────────
-    // The mesh drifts through viewport space as the user scrolls.
-    // uTime drives the organic liquid movement independently.
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: document.body,
-        start: "top top",
-        end: "bottom bottom",
-        scrub: 1.4,
+    // ─── Scroll uniform update ─────────────────────────────────────────────────
+    // hero height = 100vh; scroll 0 → heroBottom maps uScroll 0 → 1
+    const scrollProxy = { value: 0 }
+    let heroHeight = window.innerHeight
+
+    ScrollTrigger.create({
+      trigger: "#hero",
+      start: "top top",
+      end: "bottom top",
+      scrub: true,
+      onUpdate: (self) => {
+        scrollProxy.value = self.progress
+        material.uniforms.uScroll.value = self.progress
       },
     })
 
-    tl.to(mesh.position, { x: -1.8, y: -0.6, z: -0.5, ease: "none" }, 0)
-    tl.to(mesh.rotation, { x: Math.PI * 0.6, y: Math.PI * 1.1, ease: "none" }, 0)
-    tl.to(mesh.position, { x: 0.8, y: 0.3, z: 0.4, ease: "none" }, 0.5)
+    // ─── Canvas visibility ─────────────────────────────────────────────────────
+    // Hide canvas once user is fully past the hero so it doesn't render offscreen
+    ScrollTrigger.create({
+      trigger: "#hero",
+      start: "bottom top",
+      onEnter: () => { canvas.style.display = "none" },
+      onLeaveBack: () => { canvas.style.display = "block" },
+    })
+
+    // ─── Resize ───────────────────────────────────────────────────────────────
+    function onResize() {
+      heroHeight = window.innerHeight
+      camera.aspect = window.innerWidth / window.innerHeight
+      camera.updateProjectionMatrix()
+      renderer.setSize(window.innerWidth, window.innerHeight)
+    }
+    window.addEventListener("resize", onResize)
 
     // ─── Animation loop ───────────────────────────────────────────────────────
     let animId: number
@@ -194,19 +192,9 @@ export function HeatmapMesh() {
     function animate() {
       animId = requestAnimationFrame(animate)
       material.uniforms.uTime.value = clock.getElapsedTime()
-      mesh.rotation.y += 0.0018
-      mesh.rotation.x += 0.0007
       renderer.render(scene, camera)
     }
     animate()
-
-    // ─── Resize ───────────────────────────────────────────────────────────────
-    function onResize() {
-      camera.aspect = window.innerWidth / window.innerHeight
-      camera.updateProjectionMatrix()
-      renderer.setSize(window.innerWidth, window.innerHeight)
-    }
-    window.addEventListener("resize", onResize)
 
     return () => {
       cancelAnimationFrame(animId)

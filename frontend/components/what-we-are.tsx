@@ -4,7 +4,7 @@ import { useScrollReveal } from "@/hooks/use-scroll-reveal"
 
 const weAre = [
   {
-    title: "Pre-audit intelligence",
+    title: "Pre-audit screening",
     body: "BioGate produces structured screening reports. We surface what's there, document how we found it, and hand the analysis to qualified counsel.",
   },
   {
@@ -63,7 +63,7 @@ export function WhatWeAre() {
           </h2>
           <p className="mt-4 max-w-lg text-[16px] text-[#909090]">
             We believe the most credible thing we can do is be precise about
-            what our intelligence reports actually are, and where the line is.
+            what our screening reports actually are, and where the line is.
           </p>
         </div>
 
