@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Instrument_Serif } from 'next/font/google'
+import { Inter, Fraunces } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
@@ -9,11 +9,12 @@ const inter = Inter({
   weight: ['300', '400', '500', '600'],
 })
 
-const instrumentSerif = Instrument_Serif({
+const fraunces = Fraunces({
   subsets: ['latin'],
   variable: '--font-display',
-  weight: '400',
+  weight: 'variable',
   style: ['normal', 'italic'],
+  axes: ['WONK', 'opsz'],
 })
 
 export const viewport: Viewport = {
@@ -36,7 +37,7 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased`}
+        className={`${inter.variable} ${fraunces.variable} font-sans antialiased`}
       >
         {children}
         <Analytics />
