@@ -1,3 +1,4 @@
+import dynamic from "next/dynamic"
 import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { EntityTicker } from "@/components/entity-ticker"
@@ -7,8 +8,11 @@ import { WhatWeAre } from "@/components/what-we-are"
 import { TrustSecurity } from "@/components/trust-security"
 import { FinalCta } from "@/components/final-cta"
 import { HeroVisual } from "@/components/hero-visual"
-import { HeroMesh } from "@/components/hero-mesh"
 import Link from "next/link"
+
+const HeroMesh = dynamic(() => import("@/components/hero-mesh").then(mod => mod.HeroMesh), {
+  ssr: false,
+})
 
 export default function Home() {
   return (
