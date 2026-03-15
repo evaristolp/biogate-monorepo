@@ -40,7 +40,7 @@ function TierBadge({ tier }: { tier: RiskTier }) {
   const cfg = tierConfig[tier]
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 font-mono text-[10px] font-medium tracking-widest"
+      className="inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-[10px] font-semibold tracking-wide"
       style={{ color: cfg.color, border: `1px solid ${cfg.border}` }}
     >
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.dot }} />
@@ -59,7 +59,7 @@ export function DashboardMock() {
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px w-8 bg-[#C9A96E]" />
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#C9A96E]">
+            <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#C9A96E]">
               Intelligence report
             </span>
           </div>
@@ -84,7 +84,7 @@ export function DashboardMock() {
               <div className="h-2.5 w-2.5 rounded-full bg-[#1E1F23]" />
               <div className="h-2.5 w-2.5 rounded-full bg-[#1E1F23]" />
             </div>
-            <div className="flex-1 rounded-sm bg-[#090909] px-3 py-1 text-center font-mono text-[11px] text-[#333336]">
+            <div className="flex-1 rounded-sm bg-[#090909] px-3 py-1 text-center text-[11px] text-[#333336]">
               biogate.us / report / pre-audit-intelligence
             </div>
           </div>
@@ -93,13 +93,13 @@ export function DashboardMock() {
             {/* Report header */}
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-widest text-[#333336]">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-[#333336]">
                   PRE-AUDIT INTELLIGENCE REPORT
                 </p>
                 <p className="mt-1 text-[15px] font-medium text-[#F0EEE8]">
                   Vendor List · Q1 2026
                 </p>
-                <p className="mt-0.5 font-mono text-[11px] text-[#585858]">
+                <p className="mt-0.5 text-[11px] text-[#585858]">
                   Screened against BIS · OFAC · DoD 1260H · UFLPA
                 </p>
               </div>
@@ -109,7 +109,7 @@ export function DashboardMock() {
                     <p className="text-[22px] font-medium" style={{ color: tierConfig[tier].color }}>
                       {counts[tier]}
                     </p>
-                    <p className="font-mono text-[9px] uppercase tracking-wider text-[#333336]">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-[#333336]">
                       {tierConfig[tier].label}
                     </p>
                   </div>
@@ -123,7 +123,7 @@ export function DashboardMock() {
                 <thead>
                   <tr className="border-b border-[#1E1F23] bg-[#111215]">
                     {["Vendor Name", "Country", "Risk Tier", "Match / Reason"].map(h => (
-                      <th key={h} className="px-4 py-3 text-left font-mono text-[9px] uppercase tracking-widest text-[#333336]">
+                      <th key={h} className="px-4 py-3 text-left text-[9px] font-semibold uppercase tracking-widest text-[#333336]">
                         {h}
                       </th>
                     ))}
@@ -135,14 +135,14 @@ export function DashboardMock() {
                       key={v.name}
                       className={`transition-colors hover:bg-[#111215] ${i < vendors.length - 1 ? "border-b border-[#1A1A1E]" : ""}`}
                     >
-                      <td className="px-4 py-3 font-mono text-[12px] text-[#C8C4BC]">{v.name}</td>
+                      <td className="px-4 py-3 text-[12px] text-[#C8C4BC]">{v.name}</td>
                       <td className="px-4 py-3">
-                        <span className="rounded-sm border border-[#1E1F23] px-2 py-0.5 font-mono text-[10px] text-[#585858]">
+                        <span className="rounded-sm border border-[#1E1F23] px-2 py-0.5 text-[10px] font-medium text-[#585858]">
                           {v.country}
                         </span>
                       </td>
                       <td className="px-4 py-3"><TierBadge tier={v.tier} /></td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-[#585858]">{v.match}</td>
+                      <td className="px-4 py-3 text-[11px] text-[#585858]">{v.match}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -151,7 +151,7 @@ export function DashboardMock() {
 
             {/* Footer */}
             <div className="mt-4">
-              <p className="font-mono text-[11px] text-[#333336]">
+              <p className="text-[11px] text-[#333336]">
                 {vendors.length} vendors screened · Watchlists current as of today
               </p>
             </div>

@@ -47,7 +47,7 @@ export function TrustSecurity() {
         <div ref={headerRef} className="reveal mb-16">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px w-8 bg-[#C9A96E]" />
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#C9A96E]">
+            <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#C9A96E]">
               Security
             </span>
           </div>

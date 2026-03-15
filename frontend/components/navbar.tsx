@@ -70,19 +70,19 @@ export function Navbar() {
             onMouseEnter={() => setContactHovered(true)}
             onMouseLeave={() => setContactHovered(false)}
             onClick={handleContactClick}
-            className="relative overflow-hidden rounded-sm border border-[#C9A96E]/40 px-5 py-2 text-sm font-medium text-[#C9A96E] transition-all hover:border-[#C9A96E] hover:bg-[#C9A96E]/5 min-w-[130px]"
+            className="relative overflow-hidden rounded-full border border-[#C9A96E]/30 px-6 py-2.5 text-[13px] font-medium text-[#C9A96E] transition-all duration-200 hover:border-[#C9A96E]/60 hover:bg-[#C9A96E]/5 min-w-[160px]"
             aria-label="Copy email address"
           >
             <span
-              className={`flex items-center justify-center transition-all duration-300 ${
-                contactHovered ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"
+              className={`flex items-center justify-center transition-all duration-200 ${
+                contactHovered ? "opacity-0 -translate-y-1.5" : "opacity-100 translate-y-0"
               }`}
             >
               Contact
             </span>
             <span
-              className={`absolute inset-0 flex items-center justify-center font-mono text-[10px] tracking-[0.08em] transition-all duration-300 ${
-                contactHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+              className={`absolute inset-0 flex items-center justify-center text-[12px] tracking-wide transition-all duration-200 ${
+                contactHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5"
               }`}
             >
               {copied ? "Copied" : EMAIL}

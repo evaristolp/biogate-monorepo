@@ -32,7 +32,7 @@ export function ProcessFlow() {
         <div ref={headerRef} className="reveal mb-14">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px w-8 bg-[#C9A96E]" />
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#C9A96E]">
+            <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#C9A96E]">
               How it works
             </span>
           </div>
@@ -55,12 +55,12 @@ export function ProcessFlow() {
                 <div className="h-2.5 w-2.5 rounded-full bg-[#1E1F23]" />
                 <div className="h-2.5 w-2.5 rounded-full bg-[#1E1F23]" />
               </div>
-              <span className="font-mono text-[10px] tracking-[0.15em] text-[#3A3A3E] uppercase">
+              <span className="text-[10px] font-medium tracking-[0.15em] text-[#3A3A3E] uppercase">
                 biogate · screening operation · live
               </span>
               <div className="flex items-center gap-2">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#1E8449] animate-pulse" />
-                <span className="font-mono text-[10px] text-[#3A3A3E]">ACTIVE</span>
+                <span className="text-[10px] font-medium text-[#3A3A3E]">ACTIVE</span>
               </div>
             </div>
 
@@ -72,10 +72,10 @@ export function ProcessFlow() {
                     key={`${line.time}-${line.op}`}
                     className="grid grid-cols-[80px_140px_1fr_auto] items-baseline gap-x-5 sm:grid-cols-[88px_160px_1fr_auto]"
                   >
-                    <span className="font-mono text-[11px] text-[#404045] tabular-nums">{line.time}</span>
-                    <span className="font-mono text-[11px] tracking-[0.08em] text-[#6B6B70]">{line.op}</span>
-                    <span className="font-mono text-[11px] text-[#909090] truncate">{line.label}</span>
-                    <span className="font-mono text-[11px] text-[#585858] tabular-nums text-right hidden sm:block">{line.detail}</span>
+                    <span className="text-[11px] text-[#404045] tabular-nums">{line.time}</span>
+                    <span className="text-[11px] font-medium tracking-[0.06em] text-[#6B6B70]">{line.op}</span>
+                    <span className="text-[11px] text-[#909090] truncate">{line.label}</span>
+                    <span className="text-[11px] text-[#585858] tabular-nums text-right hidden sm:block">{line.detail}</span>
                   </div>
                 ))}
               </div>
@@ -90,16 +90,16 @@ export function ProcessFlow() {
                     key={`${line.time}-${line.op}`}
                     className="grid grid-cols-[80px_140px_1fr] items-baseline gap-x-5 sm:grid-cols-[88px_160px_1fr]"
                   >
-                    <span className="font-mono text-[11px] text-[#404045] tabular-nums">{line.time}</span>
-                    <span className={`font-mono text-[11px] tracking-[0.08em] font-medium ${line.color}`}>{line.op}</span>
-                    <span className={`font-mono text-[11px] ${line.color}`}>{line.label}</span>
+                    <span className="text-[11px] text-[#404045] tabular-nums">{line.time}</span>
+                    <span className={`text-[11px] tracking-[0.06em] font-medium ${line.color}`}>{line.op}</span>
+                    <span className={`text-[11px] ${line.color}`}>{line.label}</span>
                   </div>
                 ))}
               </div>
 
               {/* Cursor */}
               <div className="mt-5 flex items-center gap-2">
-                <span className="font-mono text-[11px] text-[#404045]">08:19:07</span>
+                <span className="text-[11px] text-[#404045] tabular-nums">08:19:07</span>
                 <span className="inline-block h-3.5 w-0.5 bg-[#C9A96E]/50 animate-pulse" />
               </div>
             </div>

@@ -49,7 +49,7 @@ export function HowItWorks() {
                     aria-hidden="true"
                   />
                 </div>
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="text-xs font-medium text-muted-foreground">
                   {step.number}
                 </span>
               </div>

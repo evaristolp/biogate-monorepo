@@ -9,7 +9,7 @@ export function HeroSection() {
         {/* Eyebrow */}
         <div className="mb-8 flex items-center gap-3">
           <div className="h-px w-8 bg-[#C9A96E]" />
-          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-[#C9A96E]">
+          <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#C9A96E]">
             BIOSECURE Act · Supply chain intelligence
           </span>
         </div>

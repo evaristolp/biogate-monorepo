@@ -29,10 +29,10 @@ export function PainPoint() {
       <div className="mx-auto max-w-[1200px]">
         {/* Header */}
         <div className="mb-14 text-center">
-          <p className="font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[#6B7294]">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6B7294]">
             The old way vs. the right way
           </p>
-          <h2 className="font-display mt-3 text-3xl font-bold tracking-tight text-[#E8E8E8] md:text-4xl">
+          <h2 className="font-display mt-3 text-3xl font-normal tracking-tight text-[#E8E8E8] md:text-4xl">
             Stop paying law firms to do what software should
           </h2>
         </div>
@@ -46,10 +46,10 @@ export function PainPoint() {
                 <X className="h-5 w-5 text-[#F0A500]" />
               </div>
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-widest text-[#F0A500]">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-[#F0A500]">
                   The law firm way
                 </p>
-                <p className="font-display text-base font-semibold text-[#E8E8E8]">
+                <p className="font-display text-base font-medium text-[#E8E8E8]">
                   Manual compliance audits
                 </p>
               </div>
@@ -73,10 +73,10 @@ export function PainPoint() {
                 <Check className="h-5 w-5 text-[#00D4AA]" />
               </div>
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-widest text-[#00D4AA]">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-[#00D4AA]">
                   The BioGate way
                 </p>
-                <p className="font-display text-base font-semibold text-[#E8E8E8]">
+                <p className="font-display text-base font-medium text-[#E8E8E8]">
                   Automated compliance platform
                 </p>
               </div>
@@ -97,19 +97,19 @@ export function PainPoint() {
         {/* Quantified summary */}
         <div className="mt-10 grid grid-cols-3 gap-4 rounded-2xl border border-[#2A2D3A] bg-[#1A1F36] p-6 text-center">
           <div>
-            <p className="font-display text-2xl font-bold text-[#00D4AA] sm:text-3xl">
+            <p className="font-display text-2xl font-normal text-[#00D4AA] sm:text-3xl">
               ~$150K
             </p>
             <p className="mt-1 text-xs text-[#6B7294]">avg. law firm audit cost</p>
           </div>
           <div className="border-x border-[#2A2D3A]">
-            <p className="font-display text-2xl font-bold text-[#00D4AA] sm:text-3xl">
+            <p className="font-display text-2xl font-normal text-[#00D4AA] sm:text-3xl">
               6 weeks
             </p>
             <p className="mt-1 text-xs text-[#6B7294]">avg. law firm turnaround</p>
           </div>
           <div>
-            <p className="font-display text-2xl font-bold text-[#00D4AA] sm:text-3xl">
+            <p className="font-display text-2xl font-normal text-[#00D4AA] sm:text-3xl">
               &lt; 1 hr
             </p>
             <p className="mt-1 text-xs text-[#6B7294]">BioGate turnaround</p>

@@ -39,12 +39,12 @@ export function HeroVisual() {
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[#1E1F23] bg-[#0D0D0F] px-4 py-3">
-            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[#2E2E32]">
+            <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-[#2E2E32]">
               Screening active
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-[#1E8449] animate-pulse" />
-              <span className="font-mono text-[9px] text-[#1E8449] tracking-wide">Live</span>
+              <span className="text-[9px] font-medium text-[#1E8449] tracking-wide">Live</span>
             </span>
           </div>
 
@@ -62,11 +62,11 @@ export function HeroVisual() {
                   i < entries.length - 1 ? "border-b border-[#0F0F12]" : ""
                 }`}
               >
-                <span className="truncate pr-3 font-mono text-[10px] text-[#3A3A3E]">
+                <span className="truncate pr-3 text-[10px] text-[#3A3A3E]">
                   {entry.name}
                 </span>
                 <span
-                  className="flex-shrink-0 font-mono text-[9px] tracking-[0.14em]"
+                  className="flex-shrink-0 text-[9px] font-semibold tracking-[0.12em]"
                   style={{ color: entry.color }}
                 >
                   {entry.label}
@@ -78,10 +78,10 @@ export function HeroVisual() {
           {/* Footer */}
           <div className="border-t border-[#111215] bg-[#0D0D0F] px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[9px] text-[#2A2A2E]">
+              <span className="text-[9px] text-[#2A2A2E]">
                 6 of 847 vendors processed
               </span>
-              <span className="font-mono text-[9px] text-[#2A2A2E] tabular-nums">
+              <span className="text-[9px] text-[#2A2A2E] tabular-nums">
                 0.7%
               </span>
             </div>
