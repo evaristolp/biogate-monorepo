@@ -9,7 +9,6 @@ interface VendorNode {
   id: number
   step: number   // 0–4 = at gate, 5 = exiting off-screen right
   result: RiskTier
-  lane: number   // 0–2 vertical lane
 }
 
 const STEPS = [
@@ -44,8 +43,6 @@ const STEPS = [
 // Index 5 = off-screen exit — node flies right with its result color, then fades
 const STEP_PCT = [6, 25, 46, 67, 88, 112]
 
-// Vertical lanes keep dots from stacking
-const LANE_TOP = ["22%", "50%", "76%"]
 
 const TIER_COLOR: Record<RiskTier, string> = {
   prohibited: "#C0392B",
@@ -93,21 +90,15 @@ export function ProcessFlow() {
     const timer = setInterval(() => {
       setNodes(prev => {
         const advanced = prev.map(n => ({ ...n, step: n.step + 1 }))
-        // Remove fully expired (off-screen + faded)
         const alive = advanced.filter(n => n.step <= 6)
-        // Spawn new node
+        // Only spawn when pipeline is empty — one node at a time
         const inFlight = alive.filter(n => n.step < 5).length
-        if (inFlight < 7 && Math.random() > 0.3) {
-          alive.push({
-            id: ++uid,
-            step: 0,
-            result: pickTier(),
-            lane: Math.floor(Math.random() * 3),
-          })
+        if (inFlight === 0) {
+          alive.push({ id: ++uid, step: 0, result: pickTier() })
         }
         return alive
       })
-    }, 1100)
+    }, 2500)
     return () => clearInterval(timer)
   }, [active])
 
@@ -144,7 +135,7 @@ export function ProcessFlow() {
                 <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-[#C9A96E]">
                   {step.label}
                 </p>
-                <p className="mt-0.5 font-mono text-[9px] text-[#333336]">
+                <p className="mt-0.5 font-sans text-[9px] text-[#333336]">
                   {step.count}
                 </p>
                 <p className="mt-2 hidden text-[11px] leading-snug text-[#505055] md:block">
@@ -155,7 +146,7 @@ export function ProcessFlow() {
           </div>
 
           {/* Animation track */}
-          <div className="relative h-[88px] overflow-hidden bg-[#090909]">
+          <div className="relative h-[48px] overflow-hidden bg-[#090909]">
             {/* Rail */}
             <div className="absolute top-1/2 left-0 right-0 h-px -translate-y-1/2 bg-[#1A1B1F]" />
 
@@ -194,8 +185,8 @@ export function ProcessFlow() {
                     className="absolute -translate-x-1/2 -translate-y-1/2"
                     style={{
                       left: `${leftPct}%`,
-                      top: LANE_TOP[node.lane],
-                      transition: "left 1.0s ease-in-out, opacity 0.8s, background-color 0.5s ease",
+                      top: "50%",
+                      transition: "left 2.3s ease-in-out, opacity 1.2s, background-color 0.6s ease",
                       opacity: exiting ? 0 : 0.9,
                     }}
                   >
