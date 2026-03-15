@@ -40,6 +40,7 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
     vendors = report.get("vendors") or []
     watchlist = report.get("watchlist_metadata") or []
     disclaimers = report.get("disclaimers") or []
+    ingestion_warnings = report.get("ingestion_warnings") or []
 
     org_name = _escape_html(meta.get("organization_name", "Default Organization"))
     audit_id = _escape_html(str(meta.get("audit_id", "")))
@@ -52,10 +53,21 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
 
     overall = _escape_html(summary.get("overall_risk_assessment", ""))
     total = summary.get("total_vendors", 0)
+    total_rows = summary.get("total_rows_uploaded")
+    rows_skipped = summary.get("rows_skipped")
+    unique_entities = summary.get("unique_entities")
     red = by_tier.get("red", 0)
     amber = by_tier.get("amber", 0)
     yellow = by_tier.get("yellow", 0)
     green = by_tier.get("green", 0)
+
+    if total_rows is not None and rows_skipped is not None:
+        summary_line = f"Total rows uploaded: {total_rows} | Vendors screened: {total} | Rows skipped: {rows_skipped} (see Ingestion Warnings)"
+    else:
+        summary_line = f"Total vendors: {total}"
+    if unique_entities is not None:
+        summary_line += f" | Unique entities: {unique_entities} | Total vendor entries: {total}"
+    summary_line = _escape_html(summary_line)
 
     watchlist_rows = ""
     for w in watchlist[:10]:
@@ -64,16 +76,59 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
         rc = w.get("record_count", 0)
         watchlist_rows += f"<tr><td>{sl}</td><td>{sd}</td><td>{rc}</td></tr>"
 
+    # Build one row per unique entity (grouped); show canonical name and aliases (resolved_group).
+    seen_entity_keys: set[tuple[str, str]] = set()
     vendor_rows = ""
+    country_footnote_used = False
     for v in vendors[:500]:
-        name = _escape_html((v.get("raw_input_name") or "").strip() or "—")
-        tier = (v.get("effective_tier") or v.get("risk_tier") or "green").lower()
-        country = _escape_html(str(v.get("country") or ""))
         evidence = v.get("match_evidence") or []
-        ev_str = "—"
         if evidence and isinstance(evidence[0], dict):
-            ev_str = _escape_html(evidence[0].get("matched_name") or evidence[0].get("source_list") or "—")
-        vendor_rows += f'<tr class="tier-{tier}"><td>{name}</td><td>{tier}</td><td>{country}</td><td>{ev_str}</td></tr>'
+            entity_key = (str(evidence[0].get("source_list") or ""), str(evidence[0].get("matched_name") or ""))
+        else:
+            entity_key = (str(v.get("vendor_id") or ""), str(v.get("raw_input_name") or ""))
+        if entity_key in seen_entity_keys:
+            continue
+        seen_entity_keys.add(entity_key)
+        tier = (v.get("effective_tier") or v.get("risk_tier") or "green").lower()
+        resolved_group = v.get("resolved_group") or []
+        list_label = ""
+        if evidence and isinstance(evidence[0], dict) and evidence[0].get("source_list"):
+            list_label = " [" + _escape_html(evidence[0].get("source_list", "")) + "]"
+        if resolved_group:
+            name_display = _escape_html(resolved_group[0]) + list_label
+            if len(resolved_group) > 1:
+                name_display += " — " + str(len(resolved_group)) + " uploaded vendor entries: " + _escape_html(", ".join(resolved_group[:10]))
+                if len(resolved_group) > 10:
+                    name_display += _escape_html(", … (" + str(len(resolved_group)) + " total)")
+        else:
+            name_display = _escape_html((v.get("raw_input_name") or "").strip() or "—") + list_label
+        country = _escape_html(str(v.get("country") or ""))
+        if (v.get("country_source") or "").strip().lower() == "enriched from watchlist":
+            country = country + "*" if country else "*"
+            country_footnote_used = True
+        if not evidence or not isinstance(evidence[0], dict):
+            ev_str = "No matches found"
+        else:
+            m = evidence[0]
+            ev_str = _escape_html((m.get("source_list") or "") + " — " + (m.get("matched_name") or "—"))
+        vendor_rows += f'<tr class="tier-{tier}"><td>{name_display}</td><td>{tier}</td><td>{country}</td><td>{ev_str}</td></tr>'
+
+    ingestion_warnings_block = ""
+    if ingestion_warnings:
+        ingestion_warnings_block = "<div class=\"section\"><h2>Ingestion Warnings</h2><p>The following rows were skipped or had issues:</p><table><tr><th>Row</th><th>Reason</th><th>Raw data</th></tr>"
+        for w in ingestion_warnings[:100]:
+            row_num = w.get("row_number", "—")
+            wtype = _escape_html((w.get("warning_type") or "unknown").replace("_", " "))
+            raw = w.get("raw_row_data") or {}
+            raw_str = _escape_html(", ".join(f"{k}: {v}" for k, v in list(raw.items())[:5]))
+            if len(raw) > 5:
+                raw_str += "…"
+            ingestion_warnings_block += f"<tr><td>{row_num}</td><td>{wtype}</td><td>{raw_str}</td></tr>"
+        ingestion_warnings_block += "</table></div>"
+
+    footnote_block = ""
+    if country_footnote_used:
+        footnote_block = "<p class=\"footnote\">* Country enriched from watchlist data; not provided in uploaded vendor file.</p>"
 
     disclaimer_block = "".join(f"<p>{_escape_html(d)}</p>" for d in disclaimers[:3])
 
@@ -114,6 +169,11 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
     <p class="tagline">BIOSECURE Act Compliance Certificate</p>
   </div>
 
+  <div class="section methodology">
+    <h2>Methodology</h2>
+    <p>Vendors are screened against configured watchlists. Match evidence indicates which list (if any) was matched; Green-tier vendors with no match show "No matches found". Country may be enriched from watchlist data when not provided in the upload.</p>
+  </div>
+
   <div class="meta">
     <table>
       <tr><th>Organization</th><td>{org_name}</td></tr>
@@ -127,8 +187,11 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
   <div class="section">
     <h2>Summary</h2>
     <p><strong>Overall:</strong> {overall}</p>
-    <p>Total vendors: {total} — Red: {red}, Amber: {amber}, Yellow: {yellow}, Green: {green}</p>
+    <p>{summary_line}</p>
+    <p>Red: {red}, Amber: {amber}, Yellow: {yellow}, Green: {green}</p>
   </div>
+
+  {ingestion_warnings_block}
 
   <div class="section">
     <h2>Watchlist sources</h2>
@@ -141,9 +204,10 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
   <div class="section">
     <h2>Vendor table (tiers and evidence)</h2>
     <table>
-      <tr><th>Vendor name</th><th>Tier</th><th>Country</th><th>Match / evidence</th></tr>
+      <tr><th>Vendor name</th><th>Tier</th><th>Country</th><th>Match Evidence</th></tr>
       {vendor_rows}
     </table>
+    {footnote_block}
   </div>
 
   <div class="attestation">

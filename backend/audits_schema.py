@@ -3,12 +3,30 @@ CSV schema for vendor audit uploads (BioGate /audits/upload).
 
 Defines required/optional columns and validation rules. Maps to audits/vendors
 data model per Technical Architecture Plan v1.1. Extensible for future columns.
+Uses csv.DictReader for correct handling of quoted fields (e.g. "WuXi AppTec Co., Ltd.").
 """
 
 import csv
 from dataclasses import dataclass, field
 from io import StringIO
 from typing import Any
+
+# Known country names and abbreviations for post-parse validation (ISO 3166–style).
+# Used to flag unknown country values as ingestion_warnings without failing the row.
+_COUNTRY_NAMES_AND_CODES: frozenset[str] = frozenset({
+    "us", "usa", "united states", "united states of america",
+    "uk", "gb", "united kingdom", "great britain",
+    "cn", "china", "prc", "people's republic of china",
+    "de", "germany", "deutschland",
+    "fr", "france", "jp", "japan", "in", "india",
+    "nl", "netherlands", "ch", "switzerland", "sg", "singapore",
+    "kr", "south korea", "tw", "taiwan", "hk", "hong kong",
+    "ca", "canada", "au", "australia", "ie", "ireland",
+    "es", "spain", "it", "italy", "se", "sweden", "no", "norway",
+    "fi", "finland", "dk", "denmark", "be", "belgium", "at", "austria",
+    "pl", "poland", "pt", "portugal", "il", "israel", "ru", "russia",
+    "br", "brazil", "mx", "mexico", "za", "south africa",
+})
 
 # Canonical internal column names. Input CSV headers can be messy; we map them
 # dynamically to these canonical names using fuzzy-ish normalization.
@@ -113,17 +131,39 @@ def _build_column_mapping(raw_headers: list[str]) -> tuple[dict[str, str], dict[
     return canonical_to_orig, normalized_map
 
 
+def _is_known_country(value: str) -> bool:
+    if not value or not isinstance(value, str):
+        return True
+    key = value.strip().lower()
+    return key in _COUNTRY_NAMES_AND_CODES
+
+
 def parse_validated_csv(content: str) -> list[dict[str, Any]]:
     """
     Parse CSV content into list of row dicts (keys normalized).
     Assumes content has already been validated with validate_csv().
-    Returns list of dicts with keys: vendor_name, country (optional), etc.
+    Silently drops rows with empty/whitespace-only vendor_name (use
+    parse_validated_csv_with_warnings to get those as ingestion_warnings).
+    Uses csv.DictReader so quoted fields (e.g. "WuXi AppTec Co., Ltd.") parse correctly.
+    """
+    rows, _ = parse_validated_csv_with_warnings(content)
+    return rows
+
+
+def parse_validated_csv_with_warnings(content: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Parse CSV content and return (valid_rows, ingestion_warnings).
+    Uses csv.DictReader for correct handling of quoted fields.
+    Each warning is a dict: row_number (1-based), raw_row_data (dict), warning_type (str).
+    warning_type can be "empty_vendor_name" or "unknown_country".
     """
     reader = csv.DictReader(StringIO(content))
     raw_headers = reader.fieldnames or []
     canonical_to_orig, _ = _build_column_mapping(raw_headers)
     rows: list[dict[str, Any]] = []
-    for row in reader:
+    ingestion_warnings: list[dict[str, Any]] = []
+    for row_index, row in enumerate(reader, start=2):
+        raw_row_data = dict(row)
         out: dict[str, Any] = {}
         for canonical, col_orig in canonical_to_orig.items():
             if canonical in ALLOWED_COLUMNS:
@@ -131,15 +171,31 @@ def parse_validated_csv(content: str) -> list[dict[str, Any]]:
                 out[canonical] = val
 
         vendor_name = (out.get("vendor_name") or "").strip()
-        # Skip rows with empty vendor names or names that are only punctuation/whitespace.
         if not vendor_name:
+            ingestion_warnings.append({
+                "row_number": row_index,
+                "raw_row_data": raw_row_data,
+                "warning_type": "empty_vendor_name",
+            })
             continue
         if not any(c.isalnum() for c in vendor_name):
+            ingestion_warnings.append({
+                "row_number": row_index,
+                "raw_row_data": raw_row_data,
+                "warning_type": "empty_vendor_name",
+            })
             continue
 
         out["vendor_name"] = vendor_name
+        country_val = out.get("country")
+        if country_val is not None and str(country_val).strip() and not _is_known_country(str(country_val)):
+            ingestion_warnings.append({
+                "row_number": row_index,
+                "raw_row_data": raw_row_data,
+                "warning_type": "unknown_country",
+            })
         rows.append(out)
-    return rows
+    return rows, ingestion_warnings
 
 
 def validate_csv(content: str) -> ValidationResult:

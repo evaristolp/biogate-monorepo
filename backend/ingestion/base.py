@@ -38,4 +38,8 @@ class ExtractionResult:
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     mime_type: Optional[str] = None
+    # Structured warnings for audit.ingestion_warnings (e.g. empty_vendor_name, unknown_country).
+    ingestion_warnings_structured: List[dict] = field(default_factory=list)
+    total_rows_uploaded: Optional[int] = None
+    rows_skipped: Optional[int] = None
 

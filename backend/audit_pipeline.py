@@ -51,10 +51,16 @@ def normalize_vendor_name(raw: str) -> str:
 def run_audit_pipeline(
     rows: list[dict[str, Any]],
     supabase_client: Any,
+    *,
+    ingestion_warnings: list[dict[str, Any]] | None = None,
+    total_rows_uploaded: int | None = None,
+    rows_skipped: int | None = None,
 ) -> dict[str, Any]:
     """
     Create audit + vendors, run fuzzy match for each vendor, update records, return results.
     rows: list of dicts with at least vendor_name; optional country.
+    ingestion_warnings: optional structured warnings (empty_vendor_name, unknown_country) to store on audit.
+    total_rows_uploaded / rows_skipped: optional counts for certificate summary.
     """
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         raise RuntimeError("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env")
@@ -74,6 +80,17 @@ def run_audit_pipeline(
     if not audit_data or len(audit_data) != 1:
         raise RuntimeError("Failed to create audit record")
     audit_id = audit_data[0]["id"]
+
+    if ingestion_warnings is not None or total_rows_uploaded is not None or rows_skipped is not None:
+        update_payload: dict[str, Any] = {}
+        if ingestion_warnings is not None:
+            update_payload["ingestion_warnings"] = ingestion_warnings
+        if total_rows_uploaded is not None:
+            update_payload["total_rows_uploaded"] = total_rows_uploaded
+        if rows_skipped is not None:
+            update_payload["rows_skipped"] = rows_skipped
+        if update_payload:
+            supabase_client.table("audits").update(update_payload).eq("id", audit_id).execute()
 
     # 2. Insert vendors (normalized_name from simple cleanup for now; Claude + match next)
     vendor_rows = []
@@ -224,6 +241,16 @@ def run_audit_pipeline(
                 effective_score = int(round(fuzzy_score))
                 match_evidence = match_evidence_raw
                 risk_reasoning = "Scoring failed; conservative default tier applied."
+
+            # Country enrichment (BUG-04): if vendor country empty and we have a watchlist match, use match country.
+            country_source = "unknown"
+            if country_hint or vendor_rows[i].get("country"):
+                country_source = "uploaded"
+            elif match_evidence_raw and isinstance(match_evidence_raw[0], dict):
+                match_country = match_evidence_raw[0].get("country")
+                if match_country and str(match_country).strip():
+                    country_hint = str(match_country).strip()
+                    country_source = "enriched from watchlist"
         except Exception as e:
             logger.exception(
                 "Vendor processing failed for vendor_index=%d, defaulting to yellow: %s",
@@ -235,6 +262,7 @@ def run_audit_pipeline(
             effective_score = 0
             match_evidence = []
             risk_reasoning = "End-to-end vendor processing failed; conservative default tier applied."
+            country_source = "uploaded" if vendor_rows[i].get("country") else "unknown"
             # Restore conservative, non-null hints so downstream payload
             # construction never fails even when early processing did.
             normalized_name = normalize_vendor_name(raw_name)
@@ -249,13 +277,12 @@ def run_audit_pipeline(
 
         # Collect vendor updates for batched upsert to avoid per-vendor HTTP calls.
         update_payload: dict[str, Any] = {
-            # Include required columns so PostgREST upsert never attempts to write NULLs
-            # into NOT NULL fields (even on conflict updates).
             "id": v["id"],
             "audit_id": audit_id,
             "raw_input_name": raw_name,
             "normalized_name": normalized_name or None,
             "country": country_hint or vendor_rows[i].get("country"),
+            "country_source": country_source,
             "parent_company": parent_company_hint,
             "equipment_type": equipment_type_hint,
             "risk_tier": tier,
@@ -266,6 +293,32 @@ def run_audit_pipeline(
             "risk_reasoning": risk_reasoning,
         }
         vendor_updates.append(update_payload)
+
+    # Deduplication / entity grouping (BUG-02): group vendors by same watchlist entity, set resolved_group.
+    def _entity_key(me: list | dict) -> tuple[str, str]:
+        if isinstance(me, dict):
+            matches = me.get("matches", me) if isinstance(me.get("matches"), list) else []
+        else:
+            matches = me if isinstance(me, list) else []
+        if not matches or not isinstance(matches[0], dict):
+            return ("", "")
+        m = matches[0]
+        return (str(m.get("source_list") or ""), str(m.get("matched_name") or ""))
+
+    by_entity: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for u in vendor_updates:
+        me = u.get("match_evidence") or []
+        key = _entity_key(me)
+        by_entity.setdefault(key, []).append(u)
+
+    for _key, group in by_entity.items():
+        resolved_group = [u["raw_input_name"] for u in group]
+        for u in group:
+            me = u.get("match_evidence") or []
+            if isinstance(me, list) and me and isinstance(me[0], dict):
+                u["match_evidence"] = {"matches": me, "resolved_group": resolved_group}
+            else:
+                u["match_evidence"] = {"matches": me if isinstance(me, list) else [], "resolved_group": resolved_group}
 
     # Persist vendor scoring results in batches (upsert on primary key id).
     batch_size = 500

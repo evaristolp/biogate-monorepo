@@ -25,6 +25,8 @@ export default function SignUpPage() {
       email,
       password,
       options: {
+        // Confirmation email is sent by Supabase when "Confirm email" is ON in Auth → Email.
+        // Use custom SMTP (e.g. Resend) to avoid "email rate limit exceeded"; see docs/SUPABASE_AUTH_EMAIL.md.
         emailRedirectTo:
           process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
           `${window.location.origin}/auth/callback`,
@@ -35,7 +37,11 @@ export default function SignUpPage() {
     console.log("[v0] signUp response error:", error)
 
     if (error) {
-      setError(error.message)
+      // Supabase returns "email rate limit exceeded" when auth email rate limit is hit (built-in SMTP has very low limits)
+      const msg = error.message.toLowerCase().includes("rate limit")
+        ? "We're temporarily unable to send sign-up emails. Please try again in an hour or contact support if it persists."
+        : error.message
+      setError(msg)
       setLoading(false)
       return
     }
