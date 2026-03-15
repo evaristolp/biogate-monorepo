@@ -52,7 +52,7 @@ export function WhatWeAre() {
         <div ref={headerRef} className="reveal mb-16">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-px w-8 bg-[#C9A96E]" />
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#C9A96E]">
+            <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-[#C9A96E]">
               Clarity
             </span>
           </div>
@@ -72,7 +72,7 @@ export function WhatWeAre() {
 
           {/* What we are */}
           <div className="bg-[#090909] p-8 md:p-10">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A96E] mb-6">
+            <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-[#C9A96E] mb-6">
               What we are
             </p>
             <ul className="space-y-7">
@@ -91,7 +91,7 @@ export function WhatWeAre() {
 
           {/* What we are not */}
           <div className="bg-[#090909] p-8 md:p-10 md:border-l border-[#1E1F23]">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#585858] mb-6">
+            <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-[#585858] mb-6">
               What we are not
             </p>
             <ul className="space-y-7">

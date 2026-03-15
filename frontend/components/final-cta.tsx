@@ -12,7 +12,7 @@ export function FinalCta() {
       <div ref={ref} className="reveal mx-auto max-w-[1200px]">
 
         {/* Deadline note */}
-        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#585858] mb-6">
+        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-[#585858] mb-6">
           OMB BCC list publication · December 2026
         </p>
 

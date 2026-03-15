@@ -49,9 +49,9 @@ export function Navbar() {
         className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-5"
         aria-label="Main navigation"
       >
-        {/* Wordmark — Fraunces display font to match headline system */}
+        {/* Wordmark */}
         <Link href="/" className="group">
-          <span className="font-display text-[18px] font-normal tracking-tight text-[#F0EEE8] transition-opacity group-hover:opacity-60">
+          <span className="font-sans text-[13px] font-semibold uppercase tracking-[0.28em] text-[#F0EEE8] transition-opacity group-hover:opacity-60">
             Biogate
           </span>
         </Link>

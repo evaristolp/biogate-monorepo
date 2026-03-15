@@ -119,7 +119,7 @@ export function ProcessFlow() {
         <div ref={headerRef} className="reveal mb-14">
           <div className="mb-4 flex items-center gap-3">
             <div className="h-px w-8 bg-[#C9A96E]" />
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#C9A96E]">
+            <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-[#C9A96E]">
               How it works
             </span>
           </div>
