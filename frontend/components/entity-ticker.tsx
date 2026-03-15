@@ -50,16 +50,16 @@ export function EntityTicker() {
             key={i}
             className="inline-flex items-center gap-3 pr-10"
           >
-            <span className="font-mono text-[11px] text-[#3A3A3E]">
+            <span className="text-[11px] text-[#3A3A3E]">
               {entry.name}
             </span>
             <span
-              className="font-mono text-[9px] tracking-[0.18em] uppercase"
+              className="text-[9px] font-semibold tracking-[0.15em] uppercase"
               style={{ color: entry.color }}
             >
               {entry.tier}
             </span>
-            <span className="font-mono text-[11px] text-[#1E1F23]">·</span>
+            <span className="text-[11px] text-[#1E1F23]">·</span>
           </span>
         ))}
       </div>

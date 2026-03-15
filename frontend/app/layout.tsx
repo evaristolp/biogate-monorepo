@@ -1,15 +1,7 @@
 import type { Metadata, Viewport } from 'next'
-import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google'
+import { Inter, Fraunces } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-display',
-  weight: 'variable',
-  style: ['normal', 'italic'],
-  axes: ['WONK', 'opsz'],
-})
 
 const inter = Inter({
   subsets: ['latin'],
@@ -17,10 +9,12 @@ const inter = Inter({
   weight: ['300', '400', '500', '600'],
 })
 
-const jetbrainsMono = JetBrains_Mono({
+const fraunces = Fraunces({
   subsets: ['latin'],
-  variable: '--font-mono',
-  weight: ['400', '500'],
+  variable: '--font-display',
+  weight: 'variable',
+  style: ['normal', 'italic'],
+  axes: ['WONK', 'opsz'],
 })
 
 export const viewport: Viewport = {
@@ -43,7 +37,7 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
+        className={`${inter.variable} ${fraunces.variable} font-sans antialiased`}
       >
         {children}
         <Analytics />

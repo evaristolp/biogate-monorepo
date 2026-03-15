@@ -7,6 +7,7 @@ import { WhatWeAre } from "@/components/what-we-are"
 import { TrustSecurity } from "@/components/trust-security"
 import { FinalCta } from "@/components/final-cta"
 import { HeroVisual } from "@/components/hero-visual"
+import { HeroMeshWrapper } from "@/components/hero-mesh-wrapper"
 import Link from "next/link"
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
         {/* Very subtle warm radial — barely visible, not decorative */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,rgba(201,169,110,0.04)_0%,transparent_65%)]" />
         <HeroVisual />
+        <HeroMeshWrapper />
         <div className="relative z-10 flex min-h-dvh flex-col justify-center">
           <HeroSection />
         </div>
@@ -43,40 +45,33 @@ export default function Home() {
       <FinalCta />
 
       {/* Footer */}
-      <footer className="border-t border-[#1E1F23] bg-[#090909] px-6 pb-10 pt-14">
+      <footer className="bg-[#090909] px-6 pt-16 pb-8">
         <div className="mx-auto max-w-[1200px]">
-          <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M16 3L4 8v8c0 7 5.3 13.5 12 15 6.7-1.5 12-8 12-15V8L16 3z" stroke="#C9A96E" strokeWidth="1.6" strokeLinejoin="round" />
-                  <line x1="11" y1="12" x2="11" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <line x1="16" y1="10" x2="16" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <line x1="21" y1="12" x2="21" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <line x1="10" y1="17" x2="22" y2="17" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <circle cx="11" cy="17" r="1.4" fill="#C9A96E" />
-                  <circle cx="16" cy="17" r="1.4" fill="#C9A96E" />
-                  <circle cx="21" cy="17" r="1.4" fill="#C9A96E" />
-                </svg>
-                <span className="font-display text-[16px] font-normal text-[#F0EEE8]">BioGate</span>
-              </div>
-              <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-[#3A3A3E]">
-                Compliance intelligence for the next generation.
-              </p>
+          {/* Footer links grid */}
+          <div className="flex flex-col gap-8 pb-16 border-b border-[#1E1F23] sm:flex-row sm:justify-between">
+            {/* Copyright */}
+            <p className="text-[14px] text-[#585858]">
+              © BioGate 2026
+            </p>
+            
+            {/* Links */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-8">
+              <Link href="#" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">Privacy Policy</Link>
+              <Link href="#" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">Terms of Use</Link>
             </div>
-            <div className="flex gap-8 text-[13px] text-[#3A3A3E]">
-              <Link href="#" className="transition-colors hover:text-[#585858]">Privacy</Link>
-              <Link href="#" className="transition-colors hover:text-[#585858]">Terms</Link>
-              <Link href="#" className="transition-colors hover:text-[#585858]">Contact</Link>
+            
+            {/* Contact */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-8">
+              <a href="mailto:info@biogate.us" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">info@biogate.us</a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">LinkedIn</a>
             </div>
           </div>
-          <div className="mt-10 border-t border-[#1E1F23] pt-6 flex items-center justify-between">
-            <p className="text-[11px] text-[#2A2A2E]">
-              {"© 2026 BioGate, Inc. · biogate.us"}
-            </p>
-            <p className="text-[11px] text-[#2A2A2E]">
-              BioGate produces pre-audit intelligence, not legal advice.
-            </p>
+          
+          {/* Large BIOGATE wordmark */}
+          <div className="pt-10 pb-4 flex justify-center overflow-hidden">
+            <span className="text-[48px] sm:text-[64px] md:text-[80px] lg:text-[100px] font-semibold tracking-[0.12em] text-[#1A1A1E] uppercase select-none">
+              biogate
+            </span>
           </div>
         </div>
       </footer>
