@@ -55,7 +55,7 @@ def test_run_document_audit_calls_audit_pipeline(monkeypatch, tmp_path: Path):
     def _fake_process_document(path: str, audit_id: str, org_id: str) -> ExtractionResult:
         return extraction
 
-    def _fake_run_audit_pipeline(rows, supabase_client):
+    def _fake_run_audit_pipeline(rows, supabase_client, *, ingestion_warnings=None, total_rows_uploaded=None, rows_skipped=None, **kwargs):
         supabase_client.last_rows = rows
         return {"audit_id": "test-audit", "vendor_count": len(rows), "risk_summary": {}, "vendors": []}
 
@@ -191,7 +191,7 @@ def test_batch_audit_messy_csv_and_pdf_merged(monkeypatch, tmp_path: Path):
 
     capture = _CaptureSupabase()
 
-    def _fake_run_audit_pipeline(rows: list, supabase_client: Any) -> dict:
+    def _fake_run_audit_pipeline(rows: list, supabase_client: Any, *, ingestion_warnings=None, total_rows_uploaded=None, rows_skipped=None, **kwargs) -> dict:
         supabase_client.last_rows = rows
         return {
             "audit_id": "batch-test-audit",
