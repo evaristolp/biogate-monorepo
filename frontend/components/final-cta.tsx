@@ -29,13 +29,15 @@ export function FinalCta() {
 
         {/* CTA */}
         <div className="mt-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <Link
-            href="#contact"
+          <a
+            href="https://calendar.app.google/sFB8cQVniVv2eVAJA"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2.5 rounded-sm bg-[#C9A96E] px-8 py-3.5 text-sm font-medium text-[#090909] transition-all hover:bg-[#D4B87A]"
           >
-            Request a briefing
+            Schedule briefing
             <ArrowRight className="h-4 w-4" />
-          </Link>
+          </a>
           <p className="text-[13px] text-[#585858]">
             Screened against 4 federal watchlists · No legal advice implied
           </p>
