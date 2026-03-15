@@ -8,14 +8,17 @@ import { TrustSecurity } from "@/components/trust-security"
 import { FinalCta } from "@/components/final-cta"
 import { HeroMeshWrapper } from "@/components/hero-mesh-wrapper"
 import Link from "next/link"
+import { HeatmapMeshLoader } from "@/components/heatmap-mesh-loader"
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#090909]">
+    <div className="relative min-h-screen bg-[#090909]">
+      {/* Three.js heatmap — fixed behind all content */}
+      <HeatmapMeshLoader />
       <Navbar />
 
       {/* 1 — Hero */}
-      <div className="relative min-h-dvh overflow-hidden bg-[#090909] [contain:layout_paint]">
+      <div className="relative min-h-dvh overflow-hidden [contain:layout_paint]">
         {/* Very subtle warm radial — barely visible, not decorative */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,rgba(201,169,110,0.04)_0%,transparent_65%)]" />
         <HeroMeshWrapper />
