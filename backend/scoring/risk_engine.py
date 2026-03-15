@@ -25,10 +25,33 @@ BIOSECURE_NAMED_ENTITIES: frozenset[str] = frozenset(
         "MGI",
         "Complete Genomics",
         "WuXi Apptec",
+        "WuXi AppTec",
         "WuXi Biologics",
         "Huawei",  # treat all Huawei entities as hard RED
     }
 )
+
+# Subsidiary / alias → parent for BIOSECURE. Check normalized name (lowercase, no punctuation).
+# Used before fuzzy matching so known subsidiaries short-circuit to RED.
+BIOSECURE_SUBSIDIARIES: dict[str, str] = {
+    "wuxi sta": "WuXi AppTec",
+    "shanghai syntheall": "WuXi AppTec",
+    "syntheall": "WuXi AppTec",
+    "wuxi advanced therapies": "WuXi AppTec",
+    "wuxi biologics": "WuXi AppTec",
+    "wuxi apptec": "WuXi AppTec",
+    "wuxi xdc": "WuXi AppTec",
+    "apptec": "WuXi AppTec",
+    "bgi genomics": "BGI Group",
+    "bgi procare": "BGI Group",
+    "bgi americas": "BGI Group",
+    "bgi europe": "BGI Group",
+    "beijing genomics institute": "BGI Group",
+    "complete genomics": "BGI Group",
+    "mgi tech": "BGI Group",
+    "mgi": "BGI Group",
+    "shenzhen mgi": "BGI Group",
+}
 
 # High-cardinality corporate suffixes stripped before fuzzy matching to reduce false positives.
 CORPORATE_SUFFIXES: list[str] = [
@@ -105,6 +128,52 @@ def is_biosecure_direct_match(name: str | None) -> bool:
         return False
     lower = name.lower()
     return any(entity.lower() in lower for entity in BIOSECURE_NAMED_ENTITIES)
+
+
+def _normalize_for_subsidiary(name: str | None) -> str:
+    """Lowercase, strip punctuation and common suffixes for subsidiary key lookup."""
+    if not name or not isinstance(name, str):
+        return ""
+    s = re.sub(r"[^\w\s]", " ", name).lower()
+    s = " ".join(s.split()).strip()
+    # Strip corporate suffixes so "WuXi STA (Shanghai SynTheAll)" -> "wuxi sta shanghai syntheall"
+    for suffix in ["co", "ltd", "llc", "inc", "corp", "limited", "corporation"]:
+        if s.endswith(" " + suffix):
+            s = s[: -len(suffix) - 1].strip()
+    return s
+
+
+def resolve_biosecure_subsidiary(vendor_name: str | None) -> str | None:
+    """
+    If vendor name matches a known BIOSECURE subsidiary/alias, return the parent name.
+    Runs before fuzzy matching so e.g. WuXi STA -> Red / WuXi AppTec.
+    """
+    if not vendor_name or not isinstance(vendor_name, str):
+        return None
+    normalized = _normalize_for_subsidiary(vendor_name)
+    if not normalized:
+        return None
+    for key, parent in BIOSECURE_SUBSIDIARIES.items():
+        if key in normalized or normalized in key:
+            return parent
+    return None
+
+
+def canonical_biosecure_entity_for_grouping(name: str | None) -> str | None:
+    """
+    For BIOSECURE direct match, return a canonical entity name for dedup grouping
+    so all BGI/MGI/WuXi variants group under one row. Returns None if not a named entity.
+    """
+    if not name or not isinstance(name, str):
+        return None
+    lower = name.lower()
+    if "wuxi" in lower or "apptec" in lower:
+        return "WuXi AppTec"
+    if "bgi" in lower or "mgi" in lower or "beijing genomics" in lower or "complete genomics" in lower:
+        return "BGI Group"
+    if "huawei" in lower:
+        return "Huawei Technologies"
+    return None
 
 
 def _best_fuzzy_score(matches: list[dict[str, Any]]) -> int:

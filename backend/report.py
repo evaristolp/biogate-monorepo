@@ -109,6 +109,12 @@ def generate_risk_report(audit_id: str, supabase_client: Any) -> dict[str, Any]:
 
     config = get_scoring_config()
     watchlist_rows = _get_watchlist_snapshots(supabase_client)
+    # One row per source_list: keep only the most recent snapshot per source.
+    latest_snapshots: dict[str, dict[str, Any]] = {}
+    for r in watchlist_rows:
+        key = r.get("source_list") or ""
+        if key not in latest_snapshots or (str(r.get("snapshot_date") or "") > str(latest_snapshots[key].get("snapshot_date") or "")):
+            latest_snapshots[key] = r
     watchlist_metadata = [
         WatchlistMetadataItem(
             source_list=r.get("source_list", ""),
@@ -116,7 +122,7 @@ def generate_risk_report(audit_id: str, supabase_client: Any) -> dict[str, Any]:
             record_count=int(r.get("record_count", 0)),
             file_hash=r.get("file_hash"),
         )
-        for r in watchlist_rows
+        for r in latest_snapshots.values()
     ]
 
     by_tier: dict[str, int] = {"red": 0, "amber": 0, "yellow": 0, "green": 0}

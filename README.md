@@ -39,7 +39,7 @@ BIOSECURE Act / UFLPA vendor screening: CSV upload → normalization → watchli
    ```
 
 4. **Apply database migrations**  
-   Run the SQL in `backend/migrations/` in order (001 → … → 009) in the Supabase SQL Editor (or your migration tool).
+   Run the SQL in `backend/migrations/` in order (001 → 002 → … → 011) in the Supabase SQL Editor (or your migration tool). Migration **011** adds `audits.ingestion_warnings` (and related columns) required for the upload/audit flow.
 
 5. **Run watchlist ingestion** (populates `watchlist_entities` and `watchlist_snapshots`)
    ```bash

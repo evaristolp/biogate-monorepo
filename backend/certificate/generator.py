@@ -76,14 +76,16 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
         rc = w.get("record_count", 0)
         watchlist_rows += f"<tr><td>{sl}</td><td>{sd}</td><td>{rc}</td></tr>"
 
-    # Build one row per unique entity (grouped); show canonical name and aliases (resolved_group).
+    # Build one row per unique entity (grouped by matched watchlist entity); ungrouped = one row each.
     seen_entity_keys: set[tuple[str, str]] = set()
     vendor_rows = ""
     country_footnote_used = False
     for v in vendors[:500]:
         evidence = v.get("match_evidence") or []
         if evidence and isinstance(evidence[0], dict):
-            entity_key = (str(evidence[0].get("source_list") or ""), str(evidence[0].get("matched_name") or ""))
+            src = str(evidence[0].get("source_list") or "").strip()
+            name = str(evidence[0].get("matched_name") or "").strip()
+            entity_key = (src, name) if (src and name) else (str(v.get("vendor_id") or ""), str(v.get("raw_input_name") or ""))
         else:
             entity_key = (str(v.get("vendor_id") or ""), str(v.get("raw_input_name") or ""))
         if entity_key in seen_entity_keys:
@@ -106,7 +108,10 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
         if (v.get("country_source") or "").strip().lower() == "enriched from watchlist":
             country = country + "*" if country else "*"
             country_footnote_used = True
-        if not evidence or not isinstance(evidence[0], dict):
+        # Green = no match; never show a watchlist name as evidence for green.
+        if tier == "green":
+            ev_str = "No matches found"
+        elif not evidence or not isinstance(evidence[0], dict):
             ev_str = "No matches found"
         else:
             m = evidence[0]

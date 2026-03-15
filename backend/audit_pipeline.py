@@ -25,6 +25,8 @@ from backend.scoring.risk_engine import (
     score_vendor,
     strip_corporate_suffixes,
     is_biosecure_direct_match,
+    resolve_biosecure_subsidiary,
+    canonical_biosecure_entity_for_grouping,
 )
 
 load_dotenv(dotenv_path=_REPO_ROOT / ".env")
@@ -159,10 +161,23 @@ def run_audit_pipeline(
             equipment_type_hint = (claude.get("equipment_type_hint") or "").strip() or None
 
             match_name = normalized_name or raw_name
-            # 1. Hardcoded BIOSECURE bypass: if raw or normalized contains named entity → RED, skip fuzzy
-            if is_biosecure_direct_match(raw_name) or is_biosecure_direct_match(normalized_name or ""):
+            # 0. Subsidiary resolution: known BIOSECURE subsidiary → RED (e.g. WuXi STA → WuXi AppTec)
+            subsidiary_parent = resolve_biosecure_subsidiary(raw_name) or resolve_biosecure_subsidiary(normalized_name or "")
+            if subsidiary_parent:
                 matches = [{
-                    "matched_name": raw_name or normalized_name,
+                    "matched_name": subsidiary_parent,
+                    "score": 100,
+                    "source_list": "BIOSECURE_NAMED",
+                    "country": None,
+                    "match_type": "subsidiary_resolution",
+                }]
+                logger.info("BIOSECURE subsidiary resolution for vendor_index=%d -> %s", i, subsidiary_parent)
+            elif is_biosecure_direct_match(raw_name) or is_biosecure_direct_match(normalized_name or ""):
+                # 1. Hardcoded BIOSECURE bypass: if raw or normalized contains named entity → RED, skip fuzzy
+                canonical = canonical_biosecure_entity_for_grouping(raw_name) or canonical_biosecure_entity_for_grouping(normalized_name or "")
+                matched_name = canonical or (raw_name or normalized_name)
+                matches = [{
+                    "matched_name": matched_name,
                     "score": 100,
                     "source_list": "BIOSECURE_NAMED",
                     "country": None,
@@ -294,22 +309,31 @@ def run_audit_pipeline(
         }
         vendor_updates.append(update_payload)
 
-    # Deduplication / entity grouping (BUG-02): group vendors by same watchlist entity, set resolved_group.
-    def _entity_key(me: list | dict) -> tuple[str, str]:
+    # Deduplication: group only by matched watchlist entity (source_list + matched_name).
+    # Vendors that did not match anything are NOT grouped — each is its own row.
+    def _entity_key(me: list | dict) -> tuple[str, str] | None:
         if isinstance(me, dict):
             matches = me.get("matches", me) if isinstance(me.get("matches"), list) else []
         else:
             matches = me if isinstance(me, list) else []
         if not matches or not isinstance(matches[0], dict):
-            return ("", "")
+            return None
         m = matches[0]
-        return (str(m.get("source_list") or ""), str(m.get("matched_name") or ""))
+        src = str(m.get("source_list") or "").strip()
+        name = str(m.get("matched_name") or "").strip()
+        if not src or not name:
+            return None
+        return (src, name)
 
     by_entity: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    ungrouped: list[dict[str, Any]] = []
     for u in vendor_updates:
         me = u.get("match_evidence") or []
         key = _entity_key(me)
-        by_entity.setdefault(key, []).append(u)
+        if key is not None:
+            by_entity.setdefault(key, []).append(u)
+        else:
+            ungrouped.append(u)
 
     for _key, group in by_entity.items():
         resolved_group = [u["raw_input_name"] for u in group]
@@ -319,6 +343,14 @@ def run_audit_pipeline(
                 u["match_evidence"] = {"matches": me, "resolved_group": resolved_group}
             else:
                 u["match_evidence"] = {"matches": me if isinstance(me, list) else [], "resolved_group": resolved_group}
+
+    for u in ungrouped:
+        me = u.get("match_evidence") or []
+        # Each ungrouped vendor is its own row; resolved_group = just this vendor's name
+        u["match_evidence"] = {
+            "matches": me if isinstance(me, list) else [],
+            "resolved_group": [u["raw_input_name"]],
+        }
 
     # Persist vendor scoring results in batches (upsert on primary key id).
     batch_size = 500

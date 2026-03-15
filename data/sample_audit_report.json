@@ -1,0 +1,41 @@
+{
+  "vendors": [
+    {
+      "raw_name": "Acme Biotech",
+      "normalized_name": null,
+      "country_hint": "US",
+      "parent_company_hint": null,
+      "equipment_type_hint": null,
+      "extraction_confidence": 0.9,
+      "source_context": "CSV row 2",
+      "needs_review": false
+    },
+    {
+      "raw_name": "BGI Genomics",
+      "normalized_name": null,
+      "country_hint": "CN",
+      "parent_company_hint": null,
+      "equipment_type_hint": null,
+      "extraction_confidence": 0.9,
+      "source_context": "CSV row 3",
+      "needs_review": false
+    },
+    {
+      "raw_name": "Sigma-Aldrich",
+      "normalized_name": null,
+      "country_hint": "US",
+      "parent_company_hint": null,
+      "equipment_type_hint": null,
+      "extraction_confidence": 0.9,
+      "source_context": "CSV row 4",
+      "needs_review": false
+    }
+  ],
+  "extraction_method": "CSV_PARSER",
+  "extraction_confidence": 0.9,
+  "page_count": null,
+  "processing_time_ms": 732,
+  "errors": [],
+  "warnings": [],
+  "mime_type": "text/csv"
+}
