@@ -1,4 +1,3 @@
-import dynamic from "next/dynamic"
 import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { EntityTicker } from "@/components/entity-ticker"
@@ -8,11 +7,8 @@ import { WhatWeAre } from "@/components/what-we-are"
 import { TrustSecurity } from "@/components/trust-security"
 import { FinalCta } from "@/components/final-cta"
 import { HeroVisual } from "@/components/hero-visual"
+import { HeroMeshWrapper } from "@/components/hero-mesh-wrapper"
 import Link from "next/link"
-
-const HeroMesh = dynamic(() => import("@/components/hero-mesh").then(mod => mod.HeroMesh), {
-  ssr: false,
-})
 
 export default function Home() {
   return (
@@ -24,7 +20,7 @@ export default function Home() {
         {/* Very subtle warm radial — barely visible, not decorative */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,rgba(201,169,110,0.04)_0%,transparent_65%)]" />
         <HeroVisual />
-        <HeroMesh />
+        <HeroMeshWrapper />
         <div className="relative z-10 flex min-h-dvh flex-col justify-center">
           <HeroSection />
         </div>
