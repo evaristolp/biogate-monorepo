@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
+const CALENDAR_URL = "https://calendar.app.google/jWgYSizJdFhYJKUU9"
+
 export function HeroSection() {
   return (
     <section className="w-full px-6 pb-36 pt-32">
@@ -28,13 +30,15 @@ export function HeroSection() {
 
         {/* CTAs */}
         <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-          <Link
-            href="#contact"
+          <a
+            href={CALENDAR_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2.5 rounded-sm bg-[#C9A96E] px-7 py-3 text-sm font-medium text-[#090909] transition-all hover:bg-[#D4B87A]"
           >
-            Request a briefing
+            Schedule Demo
             <ArrowRight className="h-4 w-4" />
-          </Link>
+          </a>
           <Link
             href="#how-it-works"
             className="inline-flex items-center gap-2 py-3 pl-2 text-sm text-[#585858] transition-colors hover:text-[#909090]"
