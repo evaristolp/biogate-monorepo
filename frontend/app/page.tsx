@@ -66,8 +66,8 @@ export default function Home() {
           </div>
           
           {/* Large BIOGATE wordmark */}
-          <div className="pt-20 pb-8 flex justify-center overflow-hidden">
-            <span className="text-[72px] sm:text-[96px] md:text-[140px] lg:text-[180px] font-semibold tracking-[0.12em] text-[#1A1A1E] uppercase select-none">
+          <div className="pt-10 pb-4 flex justify-center overflow-hidden">
+            <span className="text-[48px] sm:text-[64px] md:text-[80px] lg:text-[100px] font-semibold tracking-[0.12em] text-[#1A1A1E] uppercase select-none">
               biogate
             </span>
           </div>
