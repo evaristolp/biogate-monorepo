@@ -1,16 +1,14 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useMemo } from "react"
 
-interface Node {
-  id: number
+interface Point3D {
   x: number
   y: number
   z: number
-  size: number
 }
 
-interface Connection {
+interface Edge {
   from: number
   to: number
 }
@@ -18,13 +16,12 @@ interface Connection {
 export function HeroMesh() {
   const [scrollProgress, setScrollProgress] = useState(0)
   const [time, setTime] = useState(0)
-  const containerRef = useRef<HTMLDivElement>(null)
   
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY
       const windowHeight = window.innerHeight
-      const progress = Math.min(scrollY / windowHeight, 1)
+      const progress = Math.min(scrollY / (windowHeight * 1.5), 1)
       setScrollProgress(progress)
     }
     
@@ -35,168 +32,162 @@ export function HeroMesh() {
   useEffect(() => {
     let animationId: number
     const animate = () => {
-      setTime(t => t + 0.008)
+      setTime(t => t + 0.003)
       animationId = requestAnimationFrame(animate)
     }
     animationId = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(animationId)
   }, [])
 
-  // Brutalist grid-based network - isometric 3D projection
-  const gridSize = 5
-  const spacing = 50
-  const nodes: Node[] = []
-  const connections: Connection[] = []
+  // Create icosahedron vertices (20 faces, 12 vertices)
+  const phi = (1 + Math.sqrt(5)) / 2 // golden ratio
   
-  // Create a 3D grid of points
-  for (let layer = 0; layer < 3; layer++) {
-    for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize; col++) {
-        // Skip some nodes for organic feel
-        if ((row + col + layer) % 3 === 0 && layer > 0) continue
-        
-        // Isometric projection
-        const isoX = (col - row) * spacing * 0.7
-        const isoY = (col + row) * spacing * 0.4 - layer * spacing * 0.8
-        const z = 1 - layer * 0.3 - (row + col) * 0.03
-        
-        nodes.push({
-          id: nodes.length,
-          x: 300 + isoX,
-          y: 320 + isoY,
-          z: Math.max(0.2, z),
-          size: 2 + z * 2,
-        })
-      }
-    }
-  }
-  
-  // Connect adjacent nodes - grid pattern
-  nodes.forEach((node, i) => {
-    nodes.forEach((other, j) => {
-      if (i >= j) return
-      const dist = Math.sqrt(
-        Math.pow(node.x - other.x, 2) + Math.pow(node.y - other.y, 2)
-      )
-      // Connect if close enough
-      if (dist < spacing * 1.2 && dist > 10) {
-        connections.push({ from: i, to: j })
-      }
-    })
+  const baseVertices: Point3D[] = useMemo(() => [
+    { x: 0, y: 1, z: phi },
+    { x: 0, y: -1, z: phi },
+    { x: 0, y: 1, z: -phi },
+    { x: 0, y: -1, z: -phi },
+    { x: 1, y: phi, z: 0 },
+    { x: -1, y: phi, z: 0 },
+    { x: 1, y: -phi, z: 0 },
+    { x: -1, y: -phi, z: 0 },
+    { x: phi, y: 0, z: 1 },
+    { x: -phi, y: 0, z: 1 },
+    { x: phi, y: 0, z: -1 },
+    { x: -phi, y: 0, z: -1 },
+  ], [])
+
+  // Icosahedron edges
+  const edges: Edge[] = useMemo(() => [
+    { from: 0, to: 1 }, { from: 0, to: 4 }, { from: 0, to: 5 }, { from: 0, to: 8 }, { from: 0, to: 9 },
+    { from: 1, to: 6 }, { from: 1, to: 7 }, { from: 1, to: 8 }, { from: 1, to: 9 },
+    { from: 2, to: 3 }, { from: 2, to: 4 }, { from: 2, to: 5 }, { from: 2, to: 10 }, { from: 2, to: 11 },
+    { from: 3, to: 6 }, { from: 3, to: 7 }, { from: 3, to: 10 }, { from: 3, to: 11 },
+    { from: 4, to: 5 }, { from: 4, to: 8 }, { from: 4, to: 10 },
+    { from: 5, to: 9 }, { from: 5, to: 11 },
+    { from: 6, to: 7 }, { from: 6, to: 8 }, { from: 6, to: 10 },
+    { from: 7, to: 9 }, { from: 7, to: 11 },
+    { from: 8, to: 10 }, { from: 9, to: 11 },
+  ], [])
+
+  // Rotation based on time and scroll
+  const rotationX = time * 0.5 + scrollProgress * Math.PI * 2
+  const rotationY = time * 0.3 + scrollProgress * Math.PI * 1.5
+  const rotationZ = time * 0.2 + scrollProgress * Math.PI * 0.5
+
+  // 3D rotation functions
+  const rotateX = (p: Point3D, angle: number): Point3D => ({
+    x: p.x,
+    y: p.y * Math.cos(angle) - p.z * Math.sin(angle),
+    z: p.y * Math.sin(angle) + p.z * Math.cos(angle),
   })
 
-  // Animate positions slightly
-  const animatedNodes = nodes.map((node) => {
-    const drift = Math.sin(time * 0.5 + node.id * 0.3) * 1.5
-    const driftY = Math.cos(time * 0.4 + node.id * 0.2) * 1
+  const rotateY = (p: Point3D, angle: number): Point3D => ({
+    x: p.x * Math.cos(angle) + p.z * Math.sin(angle),
+    y: p.y,
+    z: -p.x * Math.sin(angle) + p.z * Math.cos(angle),
+  })
+
+  const rotateZ = (p: Point3D, angle: number): Point3D => ({
+    x: p.x * Math.cos(angle) - p.y * Math.sin(angle),
+    y: p.x * Math.sin(angle) + p.y * Math.cos(angle),
+    z: p.z,
+  })
+
+  // Apply rotations and project to 2D
+  const scale = 120
+  const centerX = 250
+  const centerY = 280
+  
+  const transformedVertices = baseVertices.map(v => {
+    let p = rotateX(v, rotationX)
+    p = rotateY(p, rotationY)
+    p = rotateZ(p, rotationZ)
+    
+    // Perspective projection
+    const perspective = 4
+    const projectionScale = perspective / (perspective + p.z)
+    
     return {
-      ...node,
-      x: node.x + drift,
-      y: node.y + driftY,
+      x: centerX + p.x * scale * projectionScale,
+      y: centerY + p.y * scale * projectionScale,
+      z: p.z,
+      scale: projectionScale,
     }
+  })
+
+  // Sort edges by average z depth for proper rendering
+  const sortedEdges = [...edges].sort((a, b) => {
+    const avgZA = (transformedVertices[a.from].z + transformedVertices[a.to].z) / 2
+    const avgZB = (transformedVertices[b.from].z + transformedVertices[b.to].z) / 2
+    return avgZA - avgZB
   })
 
   return (
     <div
-      ref={containerRef}
-      className="absolute right-[-10vw] bottom-[5vh] w-[70vw] h-[80vh] pointer-events-none hidden lg:block"
+      className="absolute right-[-5vw] bottom-[0vh] w-[55vw] h-[85vh] pointer-events-none hidden lg:block"
       style={{
-        maskImage: "linear-gradient(to left, black 20%, transparent 85%), linear-gradient(to top, black 40%, transparent 90%)",
-        WebkitMaskImage: "linear-gradient(to left, black 20%, transparent 85%), linear-gradient(to top, black 40%, transparent 90%)",
-        maskComposite: "intersect",
-        WebkitMaskComposite: "source-in",
-        transform: `translateY(${scrollProgress * 100}px)`,
-        opacity: 1 - scrollProgress * 0.7,
+        maskImage: "radial-gradient(ellipse 80% 70% at 60% 55%, black 20%, transparent 70%)",
+        WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 60% 55%, black 20%, transparent 70%)",
+        transform: `translateY(${scrollProgress * 150}px)`,
+        opacity: 1 - scrollProgress * 0.8,
       }}
     >
-      <svg
-        viewBox="0 0 600 500"
-        className="w-full h-full"
-        style={{
-          transform: `rotateZ(${scrollProgress * 8}deg)`,
-          transition: "transform 0.2s ease-out",
-        }}
-      >
-        {/* Harsh grid lines - brutalist aesthetic */}
-        {connections.map((conn, i) => {
-          const fromNode = animatedNodes[conn.from]
-          const toNode = animatedNodes[conn.to]
-          if (!fromNode || !toNode) return null
-          
-          const avgZ = (fromNode.z + toNode.z) / 2
+      <svg viewBox="0 0 500 500" className="w-full h-full">
+        {/* Edges - wireframe */}
+        {sortedEdges.map((edge, i) => {
+          const from = transformedVertices[edge.from]
+          const to = transformedVertices[edge.to]
+          const avgZ = (from.z + to.z) / 2
+          const depth = (avgZ + 2) / 4 // normalize to 0-1
           
           return (
             <line
-              key={`conn-${i}`}
-              x1={fromNode.x}
-              y1={fromNode.y}
-              x2={toNode.x}
-              y2={toNode.y}
+              key={`edge-${i}`}
+              x1={from.x}
+              y1={from.y}
+              x2={to.x}
+              y2={to.y}
               stroke="#C9A96E"
-              strokeWidth={avgZ * 1.2}
-              strokeOpacity={avgZ * 0.5}
+              strokeWidth={1 + depth * 1.5}
+              strokeOpacity={0.15 + depth * 0.5}
             />
           )
         })}
         
-        {/* Sharp rectangular nodes - no soft circles */}
-        {animatedNodes
+        {/* Vertices - nodes */}
+        {transformedVertices
+          .map((v, i) => ({ ...v, index: i }))
           .sort((a, b) => a.z - b.z)
-          .map((node) => {
-            const size = node.size * 1.5
+          .map((v) => {
+            const depth = (v.z + 2) / 4
+            const size = 3 + depth * 5
+            
             return (
-              <g key={node.id}>
-                {/* Square node */}
+              <g key={`vertex-${v.index}`}>
+                {/* Node */}
                 <rect
-                  x={node.x - size / 2}
-                  y={node.y - size / 2}
+                  x={v.x - size / 2}
+                  y={v.y - size / 2}
                   width={size}
                   height={size}
                   fill="#C9A96E"
-                  fillOpacity={node.z * 0.8}
+                  fillOpacity={0.3 + depth * 0.6}
                 />
-                {/* Inner highlight for depth */}
-                {node.z > 0.7 && (
+                {/* Inner glow for closer nodes */}
+                {depth > 0.6 && (
                   <rect
-                    x={node.x - size / 4}
-                    y={node.y - size / 4}
+                    x={v.x - size / 4}
+                    y={v.y - size / 4}
                     width={size / 2}
                     height={size / 2}
                     fill="#F0EEE8"
-                    fillOpacity={0.4}
+                    fillOpacity={0.5}
                   />
                 )}
               </g>
             )
           })}
-        
-        {/* Horizontal scan lines for texture */}
-        {[...Array(12)].map((_, i) => (
-          <line
-            key={`scan-${i}`}
-            x1="100"
-            y1={180 + i * 25}
-            x2="500"
-            y2={180 + i * 25}
-            stroke="#C9A96E"
-            strokeWidth="0.5"
-            strokeOpacity="0.04"
-          />
-        ))}
-        
-        {/* Vertical accent lines */}
-        {[...Array(8)].map((_, i) => (
-          <line
-            key={`vert-${i}`}
-            x1={180 + i * 35}
-            y1="150"
-            x2={180 + i * 35}
-            y2="450"
-            stroke="#C9A96E"
-            strokeWidth="0.3"
-            strokeOpacity="0.03"
-          />
-        ))}
       </svg>
     </div>
   )
