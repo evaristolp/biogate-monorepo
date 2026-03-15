@@ -12,7 +12,7 @@ export function FinalCta() {
       <div ref={ref} className="reveal mx-auto max-w-[1200px] text-center">
         {/* Headline */}
         <h2 className="font-display text-[36px] font-normal leading-[1.15] text-[#090909] md:text-[48px]">
-          You're going to want to see this
+          Supply chain intelligence for the next generation
         </h2>
 
         {/* CTA */}
