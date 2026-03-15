@@ -66,9 +66,9 @@ let uid = 0
 
 function pickTier(): RiskTier {
   const r = Math.random()
-  if (r < 0.05) return "prohibited"
-  if (r < 0.13) return "high-risk"
-  if (r < 0.18) return "review"
+  if (r < 0.20) return "prohibited"
+  if (r < 0.42) return "high-risk"
+  if (r < 0.62) return "review"
   return "cleared"
 }
 
@@ -107,7 +107,7 @@ export function ProcessFlow() {
         }
         return alive
       })
-    }, 680)
+    }, 1100)
     return () => clearInterval(timer)
   }, [active])
 
@@ -141,7 +141,7 @@ export function ProcessFlow() {
                 key={step.label}
                 className={`px-4 py-5 ${i < 4 ? "border-r border-[#1E1F23]" : ""}`}
               >
-                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#C9A96E]">
+                <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-[#C9A96E]">
                   {step.label}
                 </p>
                 <p className="mt-0.5 font-mono text-[9px] text-[#333336]">
@@ -195,7 +195,7 @@ export function ProcessFlow() {
                     style={{
                       left: `${leftPct}%`,
                       top: LANE_TOP[node.lane],
-                      transition: "left 0.65s ease-in-out, opacity 0.55s, background-color 0.4s ease",
+                      transition: "left 1.0s ease-in-out, opacity 0.8s, background-color 0.5s ease",
                       opacity: exiting ? 0 : 0.9,
                     }}
                   >
@@ -215,13 +215,13 @@ export function ProcessFlow() {
 
           {/* Result key strip */}
           <div className="flex items-center gap-6 border-t border-[#1E1F23] px-5 py-3">
-            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#2A2A2E]">
+            <span className="font-sans text-[9px] font-semibold uppercase tracking-[0.18em] text-[#2A2A2E]">
               Result
             </span>
             {TIERS.map(t => (
               <div key={t.key} className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: TIER_COLOR[t.key] }} />
-                <span className="font-mono text-[9px] uppercase tracking-[0.14em]" style={{ color: TIER_COLOR[t.key] }}>
+                <span className="font-sans text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: TIER_COLOR[t.key] }}>
                   {t.label}
                 </span>
               </div>
