@@ -65,8 +65,6 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
         summary_line = f"Total rows uploaded: {total_rows} | Vendors screened: {total} | Rows skipped: {rows_skipped} (see Ingestion Warnings)"
     else:
         summary_line = f"Total vendors: {total}"
-    if unique_entities is not None:
-        summary_line += f" | Unique entities: {unique_entities} | Total vendor entries: {total}"
     summary_line = _escape_html(summary_line)
 
     watchlist_rows = ""
@@ -82,6 +80,8 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
     country_footnote_used = False
     for v in vendors[:500]:
         evidence = v.get("match_evidence") or []
+        if isinstance(evidence, dict):
+            evidence = evidence.get("matches") or []
         if evidence and isinstance(evidence[0], dict):
             src = str(evidence[0].get("source_list") or "").strip()
             name = str(evidence[0].get("matched_name") or "").strip()
@@ -93,19 +93,22 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
         seen_entity_keys.add(entity_key)
         tier = (v.get("effective_tier") or v.get("risk_tier") or "green").lower()
         resolved_group = v.get("resolved_group") or []
-        list_label = ""
-        if evidence and isinstance(evidence[0], dict) and evidence[0].get("source_list"):
-            list_label = " [" + _escape_html(evidence[0].get("source_list", "")) + "]"
+        # Vendor name column: name only; match source belongs in Evidence column only (no brackets).
         if resolved_group:
-            name_display = _escape_html(resolved_group[0]) + list_label
+            # Grouped row: use canonical matched name if available, else first resolved name
+            first_display = (v.get("normalized_name") or v.get("raw_input_name") or resolved_group[0] or "—").strip() or "—"
+            if evidence and isinstance(evidence[0], dict) and evidence[0].get("matched_name"):
+                first_display = evidence[0].get("matched_name") or first_display
+            name_display = _escape_html(first_display)
             if len(resolved_group) > 1:
                 name_display += " — " + str(len(resolved_group)) + " uploaded vendor entries: " + _escape_html(", ".join(resolved_group[:10]))
                 if len(resolved_group) > 10:
                     name_display += _escape_html(", … (" + str(len(resolved_group)) + " total)")
         else:
-            name_display = _escape_html((v.get("raw_input_name") or "").strip() or "—") + list_label
+            name_display = _escape_html((v.get("normalized_name") or v.get("raw_input_name") or "").strip() or "—")
         country = _escape_html(str(v.get("country") or ""))
-        if (v.get("country_source") or "").strip().lower() == "enriched from watchlist":
+        cs = (v.get("country_source") or "").strip().lower()
+        if cs in ("enriched from watchlist", "enriched_from_subsidiary_parent"):
             country = country + "*" if country else "*"
             country_footnote_used = True
         # Green = no match; never show a watchlist name as evidence for green.
@@ -133,7 +136,7 @@ def _build_certificate_html(report: dict[str, Any], verification_url: str, qr_da
 
     footnote_block = ""
     if country_footnote_used:
-        footnote_block = "<p class=\"footnote\">* Country enriched from watchlist data; not provided in uploaded vendor file.</p>"
+        footnote_block = "<p class=\"footnote\">* Country enriched from watchlist or parent entity data; not provided in uploaded vendor file.</p>"
 
     disclaimer_block = "".join(f"<p>{_escape_html(d)}</p>" for d in disclaimers[:3])
 

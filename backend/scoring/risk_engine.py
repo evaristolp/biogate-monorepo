@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 Tier = Literal["red", "amber", "yellow", "green"]
 
 
-# Explicitly named entities in BIOSECURE / BCC context. Substring match → RED.
+# Explicitly named entities in BIOSECURE / BCC context (NDAA Sec. 851). Substring match → RED.
+# Huawei is NOT a BCC (telecom/IT); flag via BIS_ENTITY_LIST/OFAC only.
 BIOSECURE_NAMED_ENTITIES: frozenset[str] = frozenset(
     {
         "BGI",
@@ -27,7 +28,6 @@ BIOSECURE_NAMED_ENTITIES: frozenset[str] = frozenset(
         "WuXi Apptec",
         "WuXi AppTec",
         "WuXi Biologics",
-        "Huawei",  # treat all Huawei entities as hard RED
     }
 )
 
@@ -171,8 +171,6 @@ def canonical_biosecure_entity_for_grouping(name: str | None) -> str | None:
         return "WuXi AppTec"
     if "bgi" in lower or "mgi" in lower or "beijing genomics" in lower or "complete genomics" in lower:
         return "BGI Group"
-    if "huawei" in lower:
-        return "Huawei Technologies"
     return None
 
 
@@ -205,6 +203,43 @@ def _normalize_country_code(country: str | None) -> str:
     if len(s) <= 2:
         return s[:2]
     return _COUNTRY_ALIASES.get(s, s[:2])
+
+
+# Allied countries: vendors from these need a much higher fuzzy score to trigger a flag.
+ALLIED_COUNTRIES: frozenset[str] = frozenset({
+    "united states", "us", "usa", "united kingdom", "uk", "canada",
+    "germany", "france", "netherlands", "switzerland", "japan",
+    "south korea", "australia", "sweden", "denmark", "norway",
+    "finland", "ireland", "belgium", "austria", "italy", "spain",
+    "luxembourg", "israel", "singapore", "taiwan", "new zealand",
+})
+
+
+def get_fuzzy_threshold(vendor_country: str | None) -> int:
+    """Allied-country vendors need a much higher fuzzy score to trigger a flag."""
+    if vendor_country and vendor_country.strip().lower() in ALLIED_COUNTRIES:
+        return 95  # Near-exact match required for allied countries
+    return 80  # Standard threshold for others
+
+
+# Major lab supply / life science vendors that should never be flagged unless EXACT watchlist match.
+KNOWN_SAFE_VENDORS: frozenset[str] = frozenset({
+    "illumina", "thermo fisher", "fisher scientific", "agilent",
+    "bio-rad", "bio rad", "corning", "perkinelmer", "beckman coulter",
+    "10x genomics", "idt", "integrated dna technologies", "promega",
+    "new england biolabs", "neb", "twist bioscience", "biolegend",
+    "eurofins", "charles river", "lonza", "sartorius", "eppendorf",
+    "qiagen", "cytiva", "milliporesigma", "milliporeroche", "abcam",
+    "takara", "samsung biologics", "novatek",
+})
+
+
+def is_known_safe(normalized_name: str | None) -> bool:
+    """True if vendor is a known safe lab/life-science supplier (suppress fuzzy-only flags)."""
+    if not normalized_name or not isinstance(normalized_name, str):
+        return False
+    name_lower = normalized_name.lower()
+    return any(safe in name_lower for safe in KNOWN_SAFE_VENDORS)
 
 
 def _parent_chain_max_depth(chain: list[dict[str, Any]]) -> int:
@@ -309,62 +344,73 @@ def score_vendor(
         tier = "red"
         reasoning_parts.append("Parent company is explicitly named BIOSECURE Act entity.")
     else:
-        # 3. Tier from fuzzy: thresholds configured via scoring_config.yaml.
-        # Only treat fuzzy match as amber/yellow if the matched entity is plausible
-        # (shares a token with vendor name) to avoid false positives from weak matches.
-        # When vendor_name is not passed (e.g. unit tests), allow fuzzy tier as before.
-        best_match = vendor_match_results[0] if vendor_match_results else None
-        best_matched_entity = (
-            (best_match.get("matched_name") or best_match.get("matched_entity") or "")
-            if best_match else ""
-        )
-        fuzzy_plausible = (vendor_name is None) or _match_is_plausible(vendor_name, best_matched_entity)
-
-        # 3a. Hard-red escalation for high-severity watchlists when match is strong and plausible.
-        hard_red_sources = {s.upper() for s in (config.hard_red_source_lists or [])}
-        hard_red_entities = {e.lower() for e in (config.hard_red_watchlist_entities or [])}
-        hard_red_applied = False
-        if best_match and vendor_name and best_matched_entity:
-            best_source_upper = best_source.upper()
-            is_hard_source = best_source_upper in hard_red_sources
-            is_hard_entity = best_matched_entity.lower() in hard_red_entities
-            if fuzzy_plausible and best_fuzzy >= 90 and is_hard_source:
-                tier = "red"
-                reasoning_parts.append(
-                    f"Direct watchlist match from {best_source} with high similarity; treated as hard RED."
-                )
-                hard_red_applied = True
-            elif is_hard_entity:
-                tier = "red"
-                reasoning_parts.append(
-                    f"Direct watchlist match to configured hard-red watchlist entity {best_matched_entity!r}."
-                )
-                hard_red_applied = True
-
-        if not hard_red_applied:
-            if best_fuzzy >= thresholds.red:
-                tier = "red"
-                if best_source == "BIOSECURE_NAMED":
-                    reasoning_parts.append(
-                        "Direct match to explicitly named BIOSECURE Act (NDAA Sec. 851) entity."
-                    )
-                else:
-                    reasoning_parts.append(
-                        f"Direct/watchlist match score {best_fuzzy} >= red threshold {thresholds.red}."
-                    )
-            elif best_fuzzy >= thresholds.amber and fuzzy_plausible:
-                tier = "amber"
-                reasoning_parts.append("Strong alias match (>70% fuzzy score); human review required.")
-            elif best_fuzzy >= thresholds.yellow and fuzzy_plausible:
+        # Country-adjusted fuzzy threshold: allied-country vendors need near-exact match to flag.
+        fuzzy_threshold = get_fuzzy_threshold(country)
+        if best_fuzzy < fuzzy_threshold:
+            # Fuzzy match below threshold does not count; tier from country only.
+            if country_flags:
                 tier = "yellow"
-                reasoning_parts.append(f"Partial match or country-of-concern; score {best_fuzzy} in yellow range.")
+                reasoning_parts.append("No watchlist match but vendor country is country-of-concern.")
             else:
-                if country_flags:
+                tier = "green"
+                reasoning_parts.append("No watchlist match; no country-of-concern flag.")
+        else:
+            # 3. Tier from fuzzy: thresholds configured via scoring_config.yaml.
+            # Only treat fuzzy match as amber/yellow if the matched entity is plausible
+            # (shares a token with vendor name) to avoid false positives from weak matches.
+            # When vendor_name is not passed (e.g. unit tests), allow fuzzy tier as before.
+            best_match = vendor_match_results[0] if vendor_match_results else None
+            best_matched_entity = (
+                (best_match.get("matched_name") or best_match.get("matched_entity") or "")
+                if best_match else ""
+            )
+            fuzzy_plausible = (vendor_name is None) or _match_is_plausible(vendor_name, best_matched_entity)
+
+            # 3a. Hard-red escalation for high-severity watchlists when match is strong and plausible.
+            hard_red_sources = {s.upper() for s in (config.hard_red_source_lists or [])}
+            hard_red_entities = {e.lower() for e in (config.hard_red_watchlist_entities or [])}
+            hard_red_applied = False
+            if best_match and vendor_name and best_matched_entity:
+                best_source_upper = best_source.upper()
+                is_hard_source = best_source_upper in hard_red_sources
+                is_hard_entity = best_matched_entity.lower() in hard_red_entities
+                if fuzzy_plausible and best_fuzzy >= 90 and is_hard_source:
+                    tier = "red"
+                    reasoning_parts.append(
+                        f"Direct watchlist match from {best_source} with high similarity; treated as hard RED."
+                    )
+                    hard_red_applied = True
+                elif is_hard_entity:
+                    tier = "red"
+                    reasoning_parts.append(
+                        f"Direct watchlist match to configured hard-red watchlist entity {best_matched_entity!r}."
+                    )
+                    hard_red_applied = True
+
+            if not hard_red_applied:
+                if best_fuzzy >= thresholds.red:
+                    tier = "red"
+                    if best_source == "BIOSECURE_NAMED":
+                        reasoning_parts.append(
+                            "Direct match to explicitly named BIOSECURE Act (NDAA Sec. 851) entity."
+                        )
+                    else:
+                        reasoning_parts.append(
+                            f"Direct/watchlist match score {best_fuzzy} >= red threshold {thresholds.red}."
+                        )
+                elif best_fuzzy >= thresholds.amber and fuzzy_plausible:
+                    tier = "amber"
+                    reasoning_parts.append("Strong alias match (>70% fuzzy score); human review required.")
+                elif best_fuzzy >= thresholds.yellow and fuzzy_plausible:
                     tier = "yellow"
-                    reasoning_parts.append("No watchlist match but vendor country is country-of-concern.")
+                    reasoning_parts.append(f"Partial match or country-of-concern; score {best_fuzzy} in yellow range.")
                 else:
-                    tier = "green"
-                    reasoning_parts.append("No watchlist match; no country-of-concern flag.")
+                    if country_flags:
+                        tier = "yellow"
+                        reasoning_parts.append("No watchlist match but vendor country is country-of-concern.")
+                    else:
+                        tier = "green"
+                        reasoning_parts.append("No watchlist match; no country-of-concern flag.")
 
     # Parent chain overrides: first-degree → RED, second-degree → AMBER; third-degree → amber (fail safe)
     if not parent_company_is_biosecure_named and chain:

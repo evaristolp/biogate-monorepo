@@ -9,7 +9,7 @@ Hangzhou Hikvision,China,RED,Direct Watchlist Match (100%)
 BGI Shenzhen,China,RED,Hardcoded Substring Match
 MGI Tech (US) Inc,USA,RED,Subsidiary of Red Parent
 WuXi Advanced Therapies,USA,RED,Subsidiary of Red Parent
-Huawei Technologies,China,AMBER,Strong Alias (70-95% score)
+Huawei Technologies,China,RED,BIS_ENTITY_LIST (not BIOSECURE_NAMED)
 BGI Research,China,AMBER,Strong Alias (70-95% score)
 Sinovac Biotech,China,AMBER,Strong Alias (70-95% score)
 Inspur Group,China,AMBER,Strong Alias (70-95% score)

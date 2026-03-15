@@ -27,6 +27,7 @@ from backend.scoring.risk_engine import (
     is_biosecure_direct_match,
     resolve_biosecure_subsidiary,
     canonical_biosecure_entity_for_grouping,
+    is_known_safe,
 )
 
 load_dotenv(dotenv_path=_REPO_ROOT / ".env")
@@ -148,6 +149,7 @@ def run_audit_pipeline(
         normalized_name = normalize_vendor_name(raw_name)
         parent_company_hint: str | None = None
         country_hint: str | None = vendor_rows[i].get("country")
+        suppressed_match: dict[str, Any] | None = None
         equipment_type_hint: str | None = None
         risk_source: str | None = None
         parent_match_evidence: dict[str, Any] | None = None
@@ -205,6 +207,19 @@ def run_audit_pipeline(
             fuzzy_score = matches[0]["score"] if matches else 0
             match_evidence_raw = [dict(m) for m in matches] if matches else []
 
+            # Known-safe vendor + fuzzy-only match → suppress flag (do not promote to yellow/amber).
+            if matches and (matches[0].get("score") or 0) < 100 and is_known_safe(normalized_name or raw_name):
+                m0 = matches[0]
+                suppressed_match = {
+                    "list": m0.get("source_list", ""),
+                    "matched_entity": m0.get("matched_name") or m0.get("matched_entity", ""),
+                    "score": m0.get("score", 0),
+                    "reason": "known_safe_vendor_fuzzy_suppressed",
+                }
+                matches = []
+                match_evidence_raw = []
+                fuzzy_score = 0
+
             # Resolve parent chain from graph (vendor name and parent_company_hint)
             for name in [match_name, parent_company_hint]:
                 if not name:
@@ -257,15 +272,21 @@ def run_audit_pipeline(
                 match_evidence = match_evidence_raw
                 risk_reasoning = "Scoring failed; conservative default tier applied."
 
-            # Country enrichment (BUG-04): if vendor country empty and we have a watchlist match, use match country.
+            # Country enrichment: if vendor country empty and we have a match, use match or subsidiary parent country.
             country_source = "unknown"
             if country_hint or vendor_rows[i].get("country"):
                 country_source = "uploaded"
             elif match_evidence_raw and isinstance(match_evidence_raw[0], dict):
-                match_country = match_evidence_raw[0].get("country")
-                if match_country and str(match_country).strip():
-                    country_hint = str(match_country).strip()
-                    country_source = "enriched from watchlist"
+                m0 = match_evidence_raw[0]
+                if m0.get("match_type") == "subsidiary_resolution" or m0.get("source_list") == "BIOSECURE_NAMED":
+                    # Subsidiary or BIOSECURE direct: all current BCC parents are China-based
+                    country_hint = "China"
+                    country_source = "enriched_from_subsidiary_parent"
+                else:
+                    match_country = m0.get("country")
+                    if match_country and str(match_country).strip():
+                        country_hint = str(match_country).strip()
+                        country_source = "enriched from watchlist"
         except Exception as e:
             logger.exception(
                 "Vendor processing failed for vendor_index=%d, defaulting to yellow: %s",
@@ -291,7 +312,7 @@ def run_audit_pipeline(
         risk_summary[tier] += 1
 
         # Collect vendor updates for batched upsert to avoid per-vendor HTTP calls.
-        update_payload: dict[str, Any] = {
+        update_payload = {
             "id": v["id"],
             "audit_id": audit_id,
             "raw_input_name": raw_name,
@@ -307,6 +328,8 @@ def run_audit_pipeline(
             "effective_score": effective_score,
             "risk_reasoning": risk_reasoning,
         }
+        if suppressed_match is not None:
+            update_payload["suppressed_match"] = suppressed_match
         vendor_updates.append(update_payload)
 
     # Deduplication: group only by matched watchlist entity (source_list + matched_name).
@@ -351,6 +374,9 @@ def run_audit_pipeline(
             "matches": me if isinstance(me, list) else [],
             "resolved_group": [u["raw_input_name"]],
         }
+        if u.get("suppressed_match") is not None:
+            u["match_evidence"]["suppressed_match"] = u["suppressed_match"]
+            del u["suppressed_match"]
 
     # Persist vendor scoring results in batches (upsert on primary key id).
     batch_size = 500

@@ -109,12 +109,13 @@ def test_yellow_chinese_partial_match():
 
 
 def test_yellow_partial_match_no_country():
-    """Partial match 50-69 without country flag -> yellow."""
+    """Score below country-adjusted threshold (80 when country unknown) does not count -> green."""
     result = score_vendor(
         [{"matched_name": "Some Entity", "score": 65, "source_list": "BIS_ENTITY_LIST", "country": None, "match_type": "name"}],
         country=None,
     )
-    assert result.tier == "yellow"
+    # 65 < 80 (default threshold when country unknown) so fuzzy match is ignored
+    assert result.tier == "green"
 
 
 def test_yellow_third_degree_chain():

@@ -58,6 +58,7 @@ def test_is_biosecure_direct_match_complete_genomics():
 def test_is_biosecure_direct_match_negative():
     assert is_biosecure_direct_match("Agilent Technologies") is False
     assert is_biosecure_direct_match("Illumina") is False
+    assert is_biosecure_direct_match("Huawei Technologies") is False  # Not a BCC; flag via BIS/OFAC only
     assert is_biosecure_direct_match("") is False
 
 
