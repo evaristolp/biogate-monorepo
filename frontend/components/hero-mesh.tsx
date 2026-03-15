@@ -1,5 +1,6 @@
 "use client"
 
+// 3D Icosahedron wireframe mesh - pure CSS/SVG, no Three.js
 import { useEffect, useState, useMemo } from "react"
 
 interface Point3D {
