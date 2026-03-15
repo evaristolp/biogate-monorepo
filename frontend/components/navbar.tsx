@@ -10,6 +10,15 @@ export function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function openDropdown() {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    setDropdownOpen(true)
+  }
+  function scheduleClose() {
+    closeTimer.current = setTimeout(() => setDropdownOpen(false), 150)
+  }
 
   useEffect(() => {
     function onScroll() {
@@ -40,9 +49,9 @@ export function Navbar() {
         className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-5"
         aria-label="Main navigation"
       >
-        {/* Wordmark — no icon, just the name */}
+        {/* Wordmark — Fraunces display font to match headline system */}
         <Link href="/" className="group">
-          <span className="font-sans text-[13px] font-semibold uppercase tracking-[0.28em] text-[#F0EEE8] transition-opacity group-hover:opacity-60">
+          <span className="font-display text-[18px] font-normal tracking-tight text-[#F0EEE8] transition-opacity group-hover:opacity-60">
             Biogate
           </span>
         </Link>
@@ -58,8 +67,8 @@ export function Navbar() {
           {/* Contact — hover reveals dropdown with email + copy */}
           <div
             className="relative"
-            onMouseEnter={() => setDropdownOpen(true)}
-            onMouseLeave={() => setDropdownOpen(false)}
+            onMouseEnter={openDropdown}
+            onMouseLeave={scheduleClose}
           >
             <button
               type="button"
@@ -68,8 +77,10 @@ export function Navbar() {
               Contact
             </button>
 
-            {/* Dropdown */}
+            {/* Dropdown — also has mouse handlers so gap crossing doesn't close it */}
             <div
+              onMouseEnter={openDropdown}
+              onMouseLeave={scheduleClose}
               className={`absolute right-0 top-full mt-1.5 z-50 min-w-[220px] overflow-hidden rounded-sm border border-[#C9A96E]/30 bg-[#0D0D0F] transition-all duration-200 ${
                 dropdownOpen ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 -translate-y-1 pointer-events-none"
               }`}

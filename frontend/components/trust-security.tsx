@@ -66,11 +66,7 @@ export function TrustSecurity() {
             {items.map((item, i) => (
               <div
                 key={item.title}
-                className={`flex items-start gap-5 py-8 ${
-                  i < items.length - 2 || (items.length % 2 !== 0 && i < items.length - 1)
-                    ? "border-b border-[#1E1F23]"
-                    : ""
-                } ${i % 2 === 0 && i < items.length - 1 ? "md:border-b" : ""}`}
+                className={`flex items-start gap-5 py-8 ${i < items.length - 2 ? "border-b border-[#1E1F23]" : ""}`}
               >
                 <div className="mt-0.5 flex-shrink-0">
                   <item.icon className="h-4 w-4 text-[#C9A96E]" aria-hidden="true" />

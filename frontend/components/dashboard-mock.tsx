@@ -96,7 +96,7 @@ export function DashboardMock() {
                 <p className="font-mono text-[10px] uppercase tracking-widest text-[#333336]">
                   PRE-AUDIT INTELLIGENCE REPORT
                 </p>
-                <p className="mt-1 text-[15px] font-medium text-[#F0EEE8]">
+                <p className="mt-1 text-[14px] font-medium text-[#F0EEE8]">
                   Vendor List · Q1 2026
                 </p>
                 <p className="mt-0.5 font-mono text-[11px] text-[#585858]">
