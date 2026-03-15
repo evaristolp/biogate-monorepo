@@ -6,6 +6,14 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
+  // Skip auth middleware when Supabase env vars are not configured (e.g. local dev without .env)
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_MONOREPO_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_MONOREPO_ANON_KEY
+  ) {
+    return supabaseResponse
+  }
+
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
   const supabase = createServerClient(

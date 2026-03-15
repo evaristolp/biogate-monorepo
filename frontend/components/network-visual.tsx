@@ -50,9 +50,10 @@ function createNodes(width: number, height: number, isMobile: boolean): Node[] {
 }
 
 function riskColor(risk: number, alpha: number): string {
-  if (risk < 0.35) return `rgba(52, 211, 153, ${alpha})`
-  if (risk < 0.65) return `rgba(251, 191, 36, ${alpha})`
-  return `rgba(248, 113, 113, ${alpha})`
+  if (risk < 0.35) return `rgba(30, 132, 73, ${alpha})`    // --risk-green  (muted)
+  if (risk < 0.55) return `rgba(183, 149, 11, ${alpha})`   // --risk-yellow (muted)
+  if (risk < 0.75) return `rgba(214, 137, 16, ${alpha})`   // --risk-amber  (muted)
+  return `rgba(192, 57, 43, ${alpha})`                     // --risk-red    (muted)
 }
 
 export function NetworkVisual() {
@@ -210,7 +211,7 @@ export function NetworkVisual() {
             ctx.beginPath()
             ctx.moveTo(a.x, a.y)
             ctx.lineTo(b.x, b.y)
-            ctx.strokeStyle = `rgba(148, 197, 248, ${Math.min(alpha, 0.18)})`
+            ctx.strokeStyle = `rgba(201, 169, 110, ${Math.min(alpha, 0.07)})`
             ctx.lineWidth = bothAnchor ? strength * 1.2 : strength * 0.5
             ctx.stroke()
           }
@@ -278,7 +279,7 @@ export function NetworkVisual() {
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2)
         ctx.fillStyle = node.isAnchor
           ? riskColor(node.risk, 0.8)
-          : `rgba(148, 197, 248, ${0.25 + pulse * 0.1})`
+          : `rgba(201, 169, 110, ${0.08 + pulse * 0.04})`
         ctx.fill()
 
         // Label for anchors
@@ -302,7 +303,7 @@ export function NetworkVisual() {
       ctx.beginPath()
       ctx.moveTo(0, scanY)
       ctx.lineTo(w(), scanY)
-      ctx.strokeStyle = "rgba(96, 165, 250, 0.04)"
+      ctx.strokeStyle = "rgba(201, 169, 110, 0.02)"
       ctx.lineWidth = 1
       ctx.stroke()
 
