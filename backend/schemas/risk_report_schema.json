@@ -5,6 +5,7 @@
   "type": "object",
   "required": ["report_metadata", "watchlist_metadata", "summary", "vendors", "disclaimers"],
   "properties": {
+    "ingestion_warnings": { "type": "array", "items": { "type": "object" } },
     "report_metadata": {
       "type": "object",
       "required": ["report_id", "audit_id", "organization_id", "organization_name", "generated_at", "pipeline_version", "scoring_config_version"],
@@ -36,6 +37,9 @@
       "required": ["total_vendors", "vendors_by_tier", "overall_risk_assessment", "flagged_vendor_count"],
       "properties": {
         "total_vendors": { "type": "integer" },
+        "total_rows_uploaded": { "type": ["integer", "null"] },
+        "rows_skipped": { "type": ["integer", "null"] },
+        "unique_entities": { "type": ["integer", "null"] },
         "vendors_by_tier": {
           "type": "object",
           "required": ["red", "amber", "yellow", "green"],
@@ -60,11 +64,13 @@
           "raw_input_name": { "type": "string" },
           "normalized_name": { "type": ["string", "null"] },
           "country": { "type": ["string", "null"] },
+          "country_source": { "type": ["string", "null"] },
           "parent_company": { "type": ["string", "null"] },
           "equipment_type": { "type": ["string", "null"] },
           "risk_tier": { "type": "string", "enum": ["red", "amber", "yellow", "green"] },
           "effective_tier": { "type": "string", "enum": ["red", "amber", "yellow", "green"] },
           "match_evidence": { "type": "array" },
+          "resolved_group": { "type": "array", "items": { "type": "string" } },
           "override_history": { "type": "array" },
           "recommendations": { "type": "array", "items": { "type": "string" } }
         }

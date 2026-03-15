@@ -38,6 +38,9 @@ class ReportSummary(BaseModel):
     vendors_by_tier: VendorsByTier
     overall_risk_assessment: str
     flagged_vendor_count: int
+    total_rows_uploaded: int | None = None
+    rows_skipped: int | None = None
+    unique_entities: int | None = None
 
 
 class VendorReportItem(BaseModel):
@@ -45,11 +48,13 @@ class VendorReportItem(BaseModel):
     raw_input_name: str
     normalized_name: str | None = None
     country: str | None = None
+    country_source: str | None = None
     parent_company: str | None = None
     equipment_type: str | None = None
     risk_tier: str
     effective_tier: str
     match_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    resolved_group: list[str] = Field(default_factory=list)
     override_history: list[dict[str, Any]] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
 

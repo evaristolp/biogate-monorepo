@@ -18,7 +18,7 @@ from backend.ingestion.handlers.pdf_text import extract_from_pdf_text
 from backend.ingestion.handlers.vision import extract_from_vision
 from backend.ingestion.handlers.email import extract_from_email
 from backend.ingestion.handlers.docx import extract_from_docx
-from backend.audits_schema import parse_validated_csv, validate_csv
+from backend.audits_schema import parse_validated_csv_with_warnings, validate_csv
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +124,7 @@ def _csv_to_extraction_result(file_path: str) -> ExtractionResult:
         result.warnings.append("CSV validation failed; no vendors extracted.")
         return result
 
-    rows = parse_validated_csv(content)
+    rows, ingestion_warnings = parse_validated_csv_with_warnings(content)
     vendors: List[ExtractedVendor] = []
 
     for idx, row in enumerate(rows, start=1):
@@ -143,6 +143,10 @@ def _csv_to_extraction_result(file_path: str) -> ExtractionResult:
         vendors.append(vendor)
 
     result.vendors = vendors
+    result.ingestion_warnings_structured = ingestion_warnings
+    rows_skipped = len([w for w in ingestion_warnings if w.get("warning_type") == "empty_vendor_name"])
+    result.rows_skipped = rows_skipped
+    result.total_rows_uploaded = len(rows) + rows_skipped
     if vendors:
         result.extraction_confidence = sum(v.extraction_confidence for v in vendors) / len(vendors)
     else:

@@ -120,6 +120,7 @@ def generate_risk_report(audit_id: str, supabase_client: Any) -> dict[str, Any]:
     ]
 
     by_tier: dict[str, int] = {"red": 0, "amber": 0, "yellow": 0, "green": 0}
+    entity_keys: set[tuple[str, str]] = set()
     vendor_items: list[VendorReportItem] = []
     for v in vendors:
         vid = str(v["id"])
@@ -128,11 +129,17 @@ def generate_risk_report(audit_id: str, supabase_client: Any) -> dict[str, Any]:
         effective = (active_override.get("override_tier") or base_tier).lower() if active_override else base_tier
         by_tier[effective] = by_tier.get(effective, 0) + 1
         override_history = override_history_by_vendor.get(vid, [])
-        match_evidence = v.get("match_evidence") or []
-        if isinstance(match_evidence, list) and match_evidence and isinstance(match_evidence[0], dict):
-            pass
+        match_evidence_raw = v.get("match_evidence") or []
+        if isinstance(match_evidence_raw, dict):
+            match_evidence = match_evidence_raw.get("matches") or []
+            resolved_group = match_evidence_raw.get("resolved_group") or []
         else:
-            match_evidence = []
+            match_evidence = match_evidence_raw if isinstance(match_evidence_raw, list) else []
+            resolved_group = []
+        if match_evidence and isinstance(match_evidence[0], dict):
+            entity_keys.add((str(match_evidence[0].get("source_list") or ""), str(match_evidence[0].get("matched_name") or "")))
+        else:
+            entity_keys.add((vid, v.get("raw_input_name") or ""))
         recommendations: list[str] = []
         if effective in ("red", "amber"):
             recommendations.append("Manual review recommended before compliance certificate.")
@@ -144,11 +151,13 @@ def generate_risk_report(audit_id: str, supabase_client: Any) -> dict[str, Any]:
                 raw_input_name=v.get("raw_input_name") or "",
                 normalized_name=v.get("normalized_name"),
                 country=v.get("country"),
+                country_source=v.get("country_source"),
                 parent_company=v.get("parent_company"),
                 equipment_type=v.get("equipment_type"),
                 risk_tier=v.get("risk_tier") or "green",
                 effective_tier=effective,
                 match_evidence=match_evidence,
+                resolved_group=resolved_group,
                 override_history=override_history,
                 recommendations=recommendations,
             )
@@ -176,13 +185,18 @@ def generate_risk_report(audit_id: str, supabase_client: Any) -> dict[str, Any]:
         vendors_by_tier=VendorsByTier(**by_tier),
         overall_risk_assessment=overall,
         flagged_vendor_count=flagged,
+        total_rows_uploaded=audit.get("total_rows_uploaded"),
+        rows_skipped=audit.get("rows_skipped"),
+        unique_entities=len(entity_keys),
     )
+    ingestion_warnings = audit.get("ingestion_warnings") or []
     report = {
         "report_metadata": report_metadata.model_dump(mode="json"),
         "watchlist_metadata": [m.model_dump() for m in watchlist_metadata],
         "summary": summary.model_dump(),
         "vendors": [vi.model_dump(mode="json") for vi in vendor_items],
         "disclaimers": [DEFAULT_DISCLAIMER],
+        "ingestion_warnings": ingestion_warnings,
     }
     schema = _load_schema()
     schema.pop("$schema", None)

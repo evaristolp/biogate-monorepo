@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Iterable, List, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 from backend.audit_pipeline import run_audit_pipeline
 from backend.ingestion.base import ExtractedVendor, ExtractionMethod, ExtractionResult
@@ -68,7 +68,13 @@ def run_document_audit(
         # API / CLI layers can decide whether to treat this as a hard failure.
         return None, extraction_result
 
-    audit_result = run_audit_pipeline(rows, supabase_client)
+    audit_result = run_audit_pipeline(
+        rows,
+        supabase_client,
+        ingestion_warnings=getattr(extraction_result, "ingestion_warnings_structured", None) or [],
+        total_rows_uploaded=getattr(extraction_result, "total_rows_uploaded", None),
+        rows_skipped=getattr(extraction_result, "rows_skipped", None),
+    )
     return audit_result, extraction_result
 
 
@@ -95,7 +101,10 @@ def run_document_audit_from_paths(
     all_vendors: List[ExtractedVendor] = []
     all_errors: List[str] = []
     all_warnings: List[str] = []
+    all_ingestion_warnings: List[dict] = []
     total_ms = 0
+    total_uploaded: Optional[int] = None
+    total_skipped: Optional[int] = None
     methods_used: List[str] = []
     last_result: ExtractionResult | None = None
 
@@ -112,6 +121,12 @@ def run_document_audit_from_paths(
         total_ms += result.processing_time_ms or 0
         if result.extraction_method and result.extraction_method != ExtractionMethod.MULTIPLE:
             methods_used.append(result.extraction_method.value)
+        structured = getattr(result, "ingestion_warnings_structured", None) or []
+        all_ingestion_warnings.extend(structured)
+        if getattr(result, "total_rows_uploaded", None) is not None:
+            total_uploaded = (total_uploaded or 0) + (result.total_rows_uploaded or 0)
+        if getattr(result, "rows_skipped", None) is not None:
+            total_skipped = (total_skipped or 0) + (result.rows_skipped or 0)
 
     single_method = last_result.extraction_method if (len(file_paths) == 1 and last_result) else ExtractionMethod.MULTIPLE
     combined = ExtractionResult(
@@ -121,6 +136,9 @@ def run_document_audit_from_paths(
         processing_time_ms=total_ms,
         errors=all_errors,
         warnings=all_warnings,
+        ingestion_warnings_structured=all_ingestion_warnings,
+        total_rows_uploaded=total_uploaded,
+        rows_skipped=total_skipped,
     )
     if len(file_paths) > 1 and methods_used:
         combined.warnings.insert(0, f"Processed {len(file_paths)} sources: {', '.join(methods_used)}")
@@ -129,7 +147,13 @@ def run_document_audit_from_paths(
     if not rows:
         return None, combined
 
-    audit_result = run_audit_pipeline(rows, supabase_client)
+    audit_result = run_audit_pipeline(
+        rows,
+        supabase_client,
+        ingestion_warnings=combined.ingestion_warnings_structured,
+        total_rows_uploaded=combined.total_rows_uploaded,
+        rows_skipped=combined.rows_skipped,
+    )
     return audit_result, combined
 
 
