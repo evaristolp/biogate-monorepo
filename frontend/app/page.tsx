@@ -7,6 +7,7 @@ import { WhatWeAre } from "@/components/what-we-are"
 import { TrustSecurity } from "@/components/trust-security"
 import { FinalCta } from "@/components/final-cta"
 import { HeroVisual } from "@/components/hero-visual"
+import { HeroMesh } from "@/components/hero-mesh"
 import Link from "next/link"
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
         {/* Very subtle warm radial — barely visible, not decorative */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,rgba(201,169,110,0.04)_0%,transparent_65%)]" />
         <HeroVisual />
+        <HeroMesh />
         <div className="relative z-10 flex min-h-dvh flex-col justify-center">
           <HeroSection />
         </div>
