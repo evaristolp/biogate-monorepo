@@ -406,9 +406,19 @@ async def audits_upload_and_audit(
                 audit_id_hint="api-upload",
                 org_id_hint="api-user",
             )
+        except HTTPException:
+            raise
         except Exception as e:
             _raise_config_error_if_permission_denied(e)
-            raise
+            log = logging.getLogger(__name__)
+            log.exception("Audit processing failed for upload %s", file.filename)
+            msg = str(e).strip() if str(e).strip() else "Audit processing failed."
+            if len(msg) > 200:
+                msg = msg[:197] + "..."
+            raise HTTPException(
+                status_code=502,
+                detail={"code": "AUDIT_PROCESSING_FAILED", "message": msg},
+            ) from e
 
         if audit_result is None:
             raise HTTPException(

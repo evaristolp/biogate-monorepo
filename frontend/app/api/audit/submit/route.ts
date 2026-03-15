@@ -12,6 +12,26 @@ const BACKEND_URL = normalizeBaseUrl(
   process.env.BIOGATE_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
 )
 
+/** Extract a readable error message from FastAPI error response (detail can be string, object, or array). */
+function normalizeBackendError(data: unknown): string {
+  if (data == null || typeof data !== "object") return "Audit failed"
+  const d = data as Record<string, unknown>
+  const detail = d.detail
+  if (typeof detail === "string") return detail || "Audit failed"
+  if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+    const msg = (detail as Record<string, unknown>).message
+    if (typeof msg === "string") return msg
+  }
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as Record<string, unknown>
+    const msg = first?.msg ?? first?.message
+    if (typeof msg === "string") return msg
+  }
+  const err = d.error
+  if (typeof err === "string") return err
+  return "Audit failed"
+}
+
 export async function POST(request: Request) {
   // Verify the user is authenticated
   const supabaseAuth = await createServerClient()
@@ -51,8 +71,8 @@ export async function POST(request: Request) {
 
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
-      const message = data?.detail?.message ?? data?.detail ?? data?.error ?? "Audit failed"
-      return NextResponse.json({ error: String(message) }, { status: res.status })
+      const message = normalizeBackendError(data)
+      return NextResponse.json({ error: message }, { status: res.status })
     }
 
     return NextResponse.json(data)
