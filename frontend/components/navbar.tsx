@@ -1,15 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 
-const EMAIL = "evaristo@biogate.us"
+const CALENDAR_URL = "https://calendar.app.google/jWgYSizJdFhYJKUU9"
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
-  const [contactHovered, setContactHovered] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     function onScroll() {
@@ -19,14 +16,6 @@ export function Navbar() {
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
-
-  function handleContactClick() {
-    navigator.clipboard.writeText(EMAIL).then(() => {
-      setCopied(true)
-      if (copyTimeout.current) clearTimeout(copyTimeout.current)
-      copyTimeout.current = setTimeout(() => setCopied(false), 1800)
-    })
-  }
 
   return (
     <header
@@ -55,29 +44,14 @@ export function Navbar() {
           <Link href="#security" className="hidden text-sm text-[#585858] transition-colors hover:text-[#909090] sm:block">
             Security
           </Link>
-          <button
-            type="button"
-            onMouseEnter={() => setContactHovered(true)}
-            onMouseLeave={() => setContactHovered(false)}
-            onClick={handleContactClick}
-            className="relative overflow-hidden rounded-full border border-[#C9A96E]/30 px-6 py-2.5 text-[13px] font-medium text-[#C9A96E] transition-all duration-200 hover:border-[#C9A96E]/60 hover:bg-[#C9A96E]/5 min-w-[160px]"
-            aria-label="Copy email address"
+          <a
+            href={CALENDAR_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full border border-[#C9A96E]/30 px-6 py-2.5 text-[13px] font-medium text-[#C9A96E] transition-all duration-200 hover:border-[#C9A96E]/60 hover:bg-[#C9A96E]/5"
           >
-            <span
-              className={`flex items-center justify-center transition-all duration-200 ${
-                contactHovered ? "opacity-0 -translate-y-1.5" : "opacity-100 translate-y-0"
-              }`}
-            >
-              Contact
-            </span>
-            <span
-              className={`absolute inset-0 flex items-center justify-center text-[12px] tracking-wide transition-all duration-200 ${
-                contactHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5"
-              }`}
-            >
-              {copied ? "Copied" : EMAIL}
-            </span>
-          </button>
+            Schedule Demo
+          </a>
         </div>
       </nav>
     </header>
