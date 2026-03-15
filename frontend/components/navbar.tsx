@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState, useRef } from "react"
 
-const EMAIL = "evaristo@biogate.us"
+const EMAIL = "info@biogate.us"
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)

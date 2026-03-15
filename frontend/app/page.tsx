@@ -62,7 +62,7 @@ export default function Home() {
             
             {/* Contact */}
             <div className="flex flex-col gap-3 sm:flex-row sm:gap-8">
-              <a href="mailto:evaristo@biogate.us" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">evaristo@biogate.us</a>
+              <a href="mailto:info@biogate.us" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">info@biogate.us</a>
               <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">LinkedIn</a>
             </div>
           </div>
