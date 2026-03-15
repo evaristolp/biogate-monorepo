@@ -43,40 +43,120 @@ export default function Home() {
       <FinalCta />
 
       {/* Footer */}
-      <footer className="border-t border-[#1E1F23] bg-[#090909] px-6 pb-10 pt-14">
+      <footer className="bg-[#090909] px-6 pt-16 pb-8">
         <div className="mx-auto max-w-[1200px]">
-          <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
+          {/* Footer links grid */}
+          <div className="grid grid-cols-3 gap-8 pb-16 border-b border-[#1E1F23]">
+            {/* Copyright */}
             <div>
-              <div className="flex items-center gap-2.5">
-                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M16 3L4 8v8c0 7 5.3 13.5 12 15 6.7-1.5 12-8 12-15V8L16 3z" stroke="#C9A96E" strokeWidth="1.6" strokeLinejoin="round" />
-                  <line x1="11" y1="12" x2="11" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <line x1="16" y1="10" x2="16" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <line x1="21" y1="12" x2="21" y2="22" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <line x1="10" y1="17" x2="22" y2="17" stroke="#C9A96E" strokeWidth="1.4" strokeLinecap="round" />
-                  <circle cx="11" cy="17" r="1.4" fill="#C9A96E" />
-                  <circle cx="16" cy="17" r="1.4" fill="#C9A96E" />
-                  <circle cx="21" cy="17" r="1.4" fill="#C9A96E" />
-                </svg>
-                <span className="font-display text-[16px] font-normal text-[#F0EEE8]">BioGate</span>
-              </div>
-              <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-[#3A3A3E]">
-                Compliance intelligence for the next generation.
+              <p className="text-[14px] text-[#585858]">
+                © BioGate 2026
               </p>
             </div>
-            <div className="flex gap-8 text-[13px] text-[#3A3A3E]">
-              <Link href="#" className="transition-colors hover:text-[#585858]">Privacy</Link>
-              <Link href="#" className="transition-colors hover:text-[#585858]">Terms</Link>
-              <Link href="#" className="transition-colors hover:text-[#585858]">Contact</Link>
+            
+            {/* Links */}
+            <div className="flex flex-col gap-3">
+              <Link href="#" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">Privacy Policy</Link>
+              <Link href="#" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">Terms of Use</Link>
+            </div>
+            
+            {/* Contact */}
+            <div className="flex flex-col gap-3">
+              <a href="mailto:evaristo@biogate.us" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">evaristo@biogate.us</a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-[14px] text-[#585858] transition-colors hover:text-[#909090]">LinkedIn</a>
             </div>
           </div>
-          <div className="mt-10 border-t border-[#1E1F23] pt-6 flex items-center justify-between">
-            <p className="text-[11px] text-[#2A2A2E]">
-              {"© 2026 BioGate, Inc. · biogate.us"}
-            </p>
-            <p className="text-[11px] text-[#2A2A2E]">
-              BioGate produces pre-audit intelligence, not legal advice.
-            </p>
+          
+          {/* Brutalist BIOGATE wordmark */}
+          <div className="pt-16 pb-8 flex justify-center overflow-hidden">
+            <svg 
+              viewBox="0 0 800 120" 
+              className="w-full max-w-[900px] h-auto"
+              aria-label="BioGate"
+            >
+              <defs>
+                <pattern id="halftone" patternUnits="userSpaceOnUse" width="8" height="8">
+                  <circle cx="4" cy="4" r="2.5" fill="#F0EEE8" />
+                </pattern>
+              </defs>
+              
+              {/* B */}
+              <rect x="0" y="0" width="20" height="120" fill="#F0EEE8" />
+              <rect x="20" y="0" width="60" height="20" fill="#F0EEE8" />
+              <rect x="20" y="50" width="50" height="20" fill="#F0EEE8" />
+              <rect x="20" y="100" width="60" height="20" fill="#F0EEE8" />
+              <rect x="70" y="15" width="20" height="40" fill="#F0EEE8" />
+              <rect x="60" y="65" width="20" height="40" fill="#F0EEE8" />
+              
+              {/* I */}
+              <rect x="110" y="0" width="20" height="120" fill="#F0EEE8" />
+              
+              {/* O */}
+              <rect x="150" y="20" width="20" height="80" fill="#F0EEE8" />
+              <rect x="210" y="20" width="20" height="80" fill="#F0EEE8" />
+              <rect x="165" y="0" width="50" height="20" fill="#F0EEE8" />
+              <rect x="165" y="100" width="50" height="20" fill="#F0EEE8" />
+              
+              {/* G */}
+              <rect x="260" y="0" width="80" height="20" fill="#F0EEE8" />
+              <rect x="260" y="20" width="20" height="80" fill="#F0EEE8" />
+              <rect x="260" y="100" width="80" height="20" fill="#F0EEE8" />
+              <rect x="320" y="60" width="20" height="60" fill="#F0EEE8" />
+              <rect x="295" y="55" width="45" height="20" fill="#F0EEE8" />
+              
+              {/* A */}
+              <rect x="370" y="20" width="20" height="100" fill="#F0EEE8" />
+              <rect x="430" y="20" width="20" height="100" fill="#F0EEE8" />
+              <rect x="385" y="0" width="50" height="20" fill="#F0EEE8" />
+              <rect x="385" y="55" width="50" height="20" fill="#F0EEE8" />
+              
+              {/* T */}
+              <rect x="470" y="0" width="90" height="20" fill="#F0EEE8" />
+              <rect x="500" y="20" width="20" height="100" fill="#F0EEE8" />
+              
+              {/* E */}
+              <rect x="590" y="0" width="20" height="120" fill="#F0EEE8" />
+              <rect x="610" y="0" width="60" height="20" fill="#F0EEE8" />
+              <rect x="610" y="50" width="45" height="20" fill="#F0EEE8" />
+              <rect x="610" y="100" width="60" height="20" fill="#F0EEE8" />
+              
+              {/* Halftone decorative dots - left side */}
+              <circle cx="695" cy="15" r="5" fill="#F0EEE8" />
+              <circle cx="710" cy="15" r="5" fill="#F0EEE8" />
+              <circle cx="725" cy="15" r="5" fill="#F0EEE8" />
+              <circle cx="740" cy="15" r="4" fill="#F0EEE8" />
+              <circle cx="753" cy="15" r="3" fill="#F0EEE8" />
+              <circle cx="764" cy="15" r="2" fill="#F0EEE8" />
+              
+              <circle cx="695" cy="35" r="5" fill="#F0EEE8" />
+              <circle cx="710" cy="35" r="5" fill="#F0EEE8" />
+              <circle cx="725" cy="35" r="5" fill="#F0EEE8" />
+              <circle cx="740" cy="35" r="4" fill="#F0EEE8" />
+              <circle cx="753" cy="35" r="3" fill="#F0EEE8" />
+              
+              <circle cx="695" cy="55" r="5" fill="#F0EEE8" />
+              <circle cx="710" cy="55" r="5" fill="#F0EEE8" />
+              <circle cx="725" cy="55" r="4" fill="#F0EEE8" />
+              <circle cx="738" cy="55" r="3" fill="#F0EEE8" />
+              
+              <circle cx="695" cy="75" r="5" fill="#F0EEE8" />
+              <circle cx="710" cy="75" r="5" fill="#F0EEE8" />
+              <circle cx="725" cy="75" r="4" fill="#F0EEE8" />
+              <circle cx="738" cy="75" r="3" fill="#F0EEE8" />
+              
+              <circle cx="695" cy="95" r="5" fill="#F0EEE8" />
+              <circle cx="710" cy="95" r="5" fill="#F0EEE8" />
+              <circle cx="725" cy="95" r="5" fill="#F0EEE8" />
+              <circle cx="740" cy="95" r="4" fill="#F0EEE8" />
+              <circle cx="753" cy="95" r="3" fill="#F0EEE8" />
+              
+              <circle cx="695" cy="110" r="5" fill="#F0EEE8" />
+              <circle cx="710" cy="110" r="5" fill="#F0EEE8" />
+              <circle cx="725" cy="110" r="5" fill="#F0EEE8" />
+              <circle cx="740" cy="110" r="4" fill="#F0EEE8" />
+              <circle cx="753" cy="110" r="3" fill="#F0EEE8" />
+              <circle cx="764" cy="110" r="2" fill="#F0EEE8" />
+            </svg>
           </div>
         </div>
       </footer>
